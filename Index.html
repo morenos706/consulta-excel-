@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Sistema de Consulta</title>
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { text-align: center; }
+    #grafico { width: 80%; margin: 30px auto; }
+  </style>
+</head>
+<body>
+  <h1>Consulta de Datos desde Excel</h1>
+
+  <!-- Tabla -->
+  <table id="tablaDatos" class="display" style="width:100%">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Edad</th>
+        <th>Ciudad</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <!-- Gráfico -->
+  <div id="grafico">
+    <canvas id="miGrafico"></canvas>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+  <script>
+    // Reemplaza este enlace con el de tu archivo CSV en OneDrive
+    const enlaceCSV = "https://onedrive.live.com/tu-enlace-publico.csv";
+
+    Papa.parse(enlaceCSV, {
+      download: true,
+      header: true,
+      complete: function(results) {
+        let datos = results.data;
+
+        // Insertar datos en la tabla
+        $('#tablaDatos').DataTable({
+          data: datos.map(d => [d.Nombre, d.Edad, d.Ciudad]),
+          columns: [
+            { title: "Nombre" },
+            { title: "Edad" },
+            { title: "Ciudad" }
+          ]
+        });
+
+        // Crear gráfico con Chart.js
+        const ctx = document.getElementById('miGrafico');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: datos.map(d => d.Nombre),
+            datasets: [{
+              label: 'Edades',
+              data: datos.map(d => parseInt(d.Edad)),
+              backgroundColor: 'rgba(54, 162, 235, 0.6)'
+            }]
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>
