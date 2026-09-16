@@ -11,10 +11,12 @@ indicadores e IA preventiva.
 > multi-tenant reforzado con Row-Level Security, auditoría automática, y
 > el flujo insignia completo (inspección → hallazgo → acción correctiva
 > → cierre → indicador) funcionando de punta a punta contra la base de
-> datos real. Fase 8 (infraestructura AWS) escrita en Terraform y
-> revisada, **pendiente de aplicarse en una cuenta real** (requiere
-> aprobación y credenciales de un humano — ver `docs/DEPLOYMENT.md`).
-> Ver `apps/api/README.md` para el backend y cómo probarlo.
+> datos real. Fase 5 (Frontend web) iniciada: login + dashboard reales,
+> funcionando contra la API (ver pantallazos en `apps/web/README.md`).
+> Fase 8 (infraestructura AWS) escrita en Terraform y revisada,
+> **pendiente de aplicarse en una cuenta real** (requiere aprobación y
+> credenciales de un humano — ver `docs/DEPLOYMENT.md`).
+> Ver `apps/api/README.md` y `apps/web/README.md` para cómo probarlo.
 
 ## Documentación
 
@@ -73,6 +75,21 @@ npx prisma db seed
 Ver `docs/DATABASE.md` para el detalle del schema, la estrategia de
 Row-Level Security multi-tenant y los datos de la empresa demo.
 
+## Frontend web (Fase 5)
+
+Con el backend corriendo (ver arriba y `apps/api/README.md`):
+
+```bash
+cd apps/web
+cp .env.local.example .env.local
+npm install
+npm run dev
+```
+
+Abrir `http://localhost:3000` → redirige a `/login`. Ver
+`apps/web/README.md` para los usuarios de prueba y qué pantallas ya
+funcionan.
+
 ## Infraestructura AWS (Fase 8)
 
 ```bash
@@ -91,16 +108,17 @@ entorno donde se escribió).
 
 ## Próximos pasos
 
-1. Ejecutar `terraform plan`/`apply` de la Fase 8 desde un entorno con
-   acceso real a AWS y al registro de Terraform, y desplegar la primera
-   versión de la API.
-2. Validar el alcance del MVP (`docs/ARCHITECTURE.md` §10) con el
-   equipo de producto.
-3. Fase 2 — UX/UI: wireframes de dashboard, inspecciones, carné de
-   brigadista, pasaporte de seguridad, Centro de Comando.
-4. Continuar la Fase 4 — Backend: replicar el patrón ya establecido
+1. Continuar la Fase 5 — Frontend: pantallas de trabajadores, brigada,
+   inspecciones y hallazgos (mismo patrón de `apps/web/app/dashboard`),
+   habilitando esos ítems del menú lateral.
+2. Continuar la Fase 4 — Backend: replicar el patrón ya establecido
    (`apps/api/src/modules/*`) en los módulos restantes del MVP
    (contratistas, EPP, equipos de emergencia, plan de emergencias,
    documentos, notificaciones, auditorías, COPASST).
+3. Ejecutar `terraform plan`/`apply` de la Fase 8 desde un entorno con
+   acceso real a AWS y al registro de Terraform, y desplegar la primera
+   versión de la API.
+4. Validar el alcance del MVP (`docs/ARCHITECTURE.md` §10) con el
+   equipo de producto.
 5. Fase 10 — CI/CD: pipeline de GitHub Actions que automatice el
    runbook manual de `docs/DEPLOYMENT.md` §3.2.
