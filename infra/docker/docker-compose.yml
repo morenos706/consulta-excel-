@@ -1,0 +1,22 @@
+version: "3.9"
+
+# Entorno de desarrollo local para Seguridad 360 Colombia.
+# Uso: docker compose -f infra/docker/docker-compose.yml up -d
+# Luego, en apps/api: copiar .env.example a .env (ajustando DATABASE_URL
+# si se cambia el puerto/usuario) y correr `npx prisma migrate dev`.
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: seguridad360_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - seguridad360_pg_data:/var/lib/postgresql/data
+
+volumes:
+  seguridad360_pg_data:

@@ -5,9 +5,11 @@ en el Trabajo (SG-SST), brigadas de emergencia, gestión del riesgo,
 inspecciones, capacitación, accidentalidad, contratistas, auditorías,
 indicadores e IA preventiva.
 
-> **Estado del proyecto: Fase 1 — Arquitectura completada.**
-> Este repositorio contiene la arquitectura maestra y la estructura base
-> del monorepo. La implementación de cada módulo avanza por fases (ver
+> **Estado del proyecto: Fase 1 (Arquitectura) y Fase 3 (Base de datos)
+> completadas.** Este repositorio contiene la arquitectura maestra, el
+> schema de base de datos completo (48 modelos, PostgreSQL + Prisma,
+> Row-Level Security por tenant) y el seed de la empresa demo. La
+> implementación del backend y frontend avanza por fases (ver
 > `docs/ARCHITECTURE.md` §9 Roadmap).
 
 ## Documentación
@@ -53,11 +55,25 @@ un ecosistema donde la información fluye entre módulos (ver
 La plataforma es una herramienta de gestión y apoyo documental. No
 certifica cumplimiento legal por sí sola — ver `docs/SECURITY.md` §7.
 
+## Base de datos (Fase 3)
+
+```bash
+docker compose -f infra/docker/docker-compose.yml up -d
+cd apps/api
+cp .env.example .env
+npm install
+npx prisma migrate dev
+npx prisma db seed
+```
+
+Ver `docs/DATABASE.md` para el detalle del schema, la estrategia de
+Row-Level Security multi-tenant y los datos de la empresa demo.
+
 ## Próximos pasos
 
 1. Validar el alcance del MVP (`docs/ARCHITECTURE.md` §10) con el
    equipo de producto.
 2. Fase 2 — UX/UI: wireframes de dashboard, inspecciones, carné de
    brigadista, pasaporte de seguridad, Centro de Comando.
-3. Fase 3 — Base de datos: schema Prisma, migraciones, seed de la
-   empresa demo.
+3. Fase 4 — Backend: NestJS + auth/RBAC + módulos núcleo del MVP sobre
+   el schema ya definido.

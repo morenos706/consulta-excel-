@@ -1,0 +1,24 @@
+{
+  "name": "@seguridad360/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backend API — Seguridad 360 Colombia (NestJS, Prisma, PostgreSQL)",
+  "scripts": {
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:seed": "ts-node prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^10.6.0",
+    "@types/node": "^20.14.0",
+    "prisma": "^5.20.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.20.0"
+  }
+}

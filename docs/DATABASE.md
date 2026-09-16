@@ -54,21 +54,48 @@ la capa de aplicación (defensa en profundidad: la app nunca debería poder
 
 ## 3. Diagrama entidad-relación (extendido)
 
-Ver el diagrama resumido en `ARCHITECTURE.md` §5. El schema completo de
-Prisma (`apps/api/prisma/schema.prisma`) se entrega en la Fase 3
-(Base de datos) junto con las migraciones y el seed de la empresa demo
-("Empresa Demo Colombia") descrito en la sección 62 del alcance
-funcional.
+Ver el diagrama resumido en `ARCHITECTURE.md` §5. El schema completo vive
+en `apps/api/prisma/schema.prisma` (48 modelos, ~40 de ellos con
+aislamiento multi-tenant explícito vía `tenantId`).
 
 ## 4. Estrategia de migraciones
 
-- Migraciones versionadas con Prisma Migrate, revisadas en PR.
+- Migraciones versionadas con Prisma Migrate, revisadas en PR
+  (`apps/api/prisma/migrations/`).
+- `20260916034348_init`: crea el schema completo (48 tablas).
+- `20260916034413_enable_row_level_security`: habilita Row-Level Security
+  de PostgreSQL sobre las ~36 tablas tenant-scoped, con una función
+  `current_tenant_id()` que lee la variable de sesión
+  `app.current_tenant_id`. El backend debe ejecutar
+  `SELECT set_config('app.current_tenant_id', '<uuid>', true);` al inicio
+  de cada transacción (Fase 4). El rol de aplicación en producción debe
+  ser un usuario **no superusuario** para que `FORCE ROW LEVEL SECURITY`
+  aplique de verdad (un superusuario de Postgres siempre puede saltarse
+  RLS, incluso con `FORCE`).
 - Ninguna migración destructiva (`DROP COLUMN`, `DROP TABLE`) se aplica en
   producción sin un paso previo de "deprecar y verificar" en un release
   anterior.
-- Seeds separados por ambiente: `seed.dev.ts` (empresa demo completa) y
-  `seed.prod.ts` (solo catálogos: roles base, tipos de inspección,
-  permisos).
+- Seed único de desarrollo: `apps/api/prisma/seed.ts` — catálogo de
+  permisos + roles base y la empresa demo completa ("Empresa Demo
+  Colombia", sección 62 del alcance funcional). Un seed de producción
+  (solo catálogos, sin datos demo) se agrega en la Fase 4 junto con el
+  proceso de onboarding de una empresa real.
+
+### Cómo levantar la base de datos localmente
+
+```bash
+# Opción A: Docker
+docker compose -f infra/docker/docker-compose.yml up -d
+
+# Opción B: Postgres local ya instalado
+createdb seguridad360_dev
+
+cd apps/api
+cp .env.example .env   # ajustar DATABASE_URL si aplica
+npm install
+npx prisma migrate dev # aplica las migraciones (incluye RLS)
+npx prisma db seed     # siembra la Empresa Demo Colombia
+```
 
 ## 5. Backups y recuperación
 

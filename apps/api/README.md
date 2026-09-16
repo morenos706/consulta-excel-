@@ -14,4 +14,27 @@ signatures, notifications, indicators, reports, ai, qr, audit-log).
 Ver `docs/ARCHITECTURE.md` §4 (estructura del proyecto) y `docs/API.md`
 (convenciones de la API).
 
-**Estado**: pendiente de implementación (Fase 4 del roadmap).
+## Base de datos (Fase 3 — completada)
+
+El schema Prisma completo vive en `prisma/schema.prisma` (48 modelos) con
+dos migraciones aplicadas en `prisma/migrations/`:
+
+1. `init` — crea todas las tablas.
+2. `enable_row_level_security` — aplica Row-Level Security por `tenantId`
+   en las tablas de negocio (ver `docs/DATABASE.md` §4).
+
+`prisma/seed.ts` siembra el catálogo de permisos, los 13 roles base con
+sus permisos, y la empresa demo completa ("Empresa Demo Colombia": 3
+sedes, 100 trabajadores, 10 brigadistas, equipos, inspecciones,
+hallazgos, capacitaciones, simulacros, accidentes/incidentes y matriz de
+riesgos).
+
+```bash
+cp .env.example .env   # ajustar DATABASE_URL
+npm install
+npx prisma migrate dev
+npx prisma db seed
+```
+
+**Estado**: base de datos lista (Fase 3). Módulos de la API en NestJS
+pendientes de implementación (Fase 4 del roadmap).
