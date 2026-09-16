@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuditEntity } from '../../common/decorators/audit-entity.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
@@ -7,6 +8,8 @@ import { CreateFindingDto } from './dto/create-finding.dto';
 import { CreateInspectionDto } from './dto/create-inspection.dto';
 import { InspectionsService } from './inspections.service';
 
+@ApiTags('Inspecciones')
+@ApiBearerAuth()
 @Controller('api/v1/inspections')
 @AuditEntity('Inspection')
 export class InspectionsController {

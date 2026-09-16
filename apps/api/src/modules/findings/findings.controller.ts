@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
 import { FindingStatus } from '@prisma/client';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuditEntity } from '../../common/decorators/audit-entity.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
@@ -7,6 +8,8 @@ import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { CloseFindingDto } from './dto/close-finding.dto';
 import { FindingsService } from './findings.service';
 
+@ApiTags('Hallazgos')
+@ApiBearerAuth()
 @Controller('api/v1/findings')
 @AuditEntity('Finding')
 export class FindingsController {

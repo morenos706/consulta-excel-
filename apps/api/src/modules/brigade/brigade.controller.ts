@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuditEntity } from '../../common/decorators/audit-entity.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
@@ -6,6 +7,8 @@ import { AuthenticatedUser } from '../../common/types/authenticated-user';
 import { BrigadeService } from './brigade.service';
 import { CreateBrigadistDto } from './dto/create-brigadist.dto';
 
+@ApiTags('Brigada')
+@ApiBearerAuth()
 @Controller('api/v1/brigadists')
 @AuditEntity('Brigadist')
 export class BrigadeController {
