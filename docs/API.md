@@ -1,7 +1,9 @@
 # API — Seguridad 360 Colombia
 
-> Estado: contrato y convenciones definidos en Fase 1. La implementación
-> de los endpoints por módulo se entrega en Fase 4 (Backend).
+> Estado: contrato definido en Fase 1. Fase 4 (Backend) en progreso —
+> los módulos de la sección 2.1 ya están implementados y probados
+> end-to-end contra la base de datos real; el resto sigue el mismo
+> patrón (`apps/api/src/modules/<dominio>`).
 
 ## 1. Convenciones generales
 
@@ -15,7 +17,10 @@
 - Documentación: OpenAPI/Swagger autogenerado desde los decoradores de
   NestJS, publicado en `/api/v1/docs` (protegido en producción).
 - Paginación: `?page=&pageSize=` con máximo configurable por endpoint;
-  respuestas de listado incluyen `{ data, total, page, pageSize }`.
+  respuestas de listado incluyen `{ data, total, page, pageSize }`. **Aún
+  no implementada** en los módulos actuales (listan sin paginar, viable a
+  la escala de la empresa demo); se agrega cuando el volumen de datos de
+  un tenant real lo requiera, sin cambiar la forma de la ruta.
 - Filtros: query params explícitos por recurso (`?siteId=&status=&from=&to=`),
   nunca un query builder libre expuesto al cliente.
 - Errores: formato uniforme
@@ -28,22 +33,43 @@
 Cada módulo de `apps/api/src/modules/*` expone un recurso REST estándar:
 
 ```
-GET    /api/v1/{recurso}            listar (paginado, filtrable)
+GET    /api/v1/{recurso}            listar (filtrable)
 GET    /api/v1/{recurso}/:id        detalle
 POST   /api/v1/{recurso}            crear
 PATCH  /api/v1/{recurso}/:id        actualizar
 DELETE /api/v1/{recurso}/:id        eliminar (soft delete donde aplique)
 ```
 
-Con variaciones específicas por dominio, por ejemplo:
+### 2.1 Endpoints implementados (Fase 4, en progreso)
 
-- `POST /api/v1/inspections/:id/findings` — registrar hallazgo dentro de una inspección.
-- `PATCH /api/v1/findings/:id/close` — cerrar hallazgo con evidencia.
-- `POST /api/v1/emergency/broadcast` — activar alerta de emergencia (WebSocket + push).
-- `GET /api/v1/brigadists/:id/competency-status` — semáforo calculado.
-- `GET /api/v1/employees/:id/security-passport` — pasaporte digital de seguridad.
+Todos requieren `Authorization: Bearer <token>` y el permiso indicado
+(`módulo:acción`, ver `docs/SECURITY.md` y `docs/ARCHITECTURE.md` §6):
+
+| Endpoint | Permiso | Descripción |
+|---|---|---|
+| `POST /api/v1/auth/dev-login` | público (solo `AUTH_MODE=dev`) | Emite un JWT de desarrollo — Cognito lo reemplaza en producción |
+| `GET/POST /api/v1/employees` | `employees:VIEW`/`CREATE` | CRUD de trabajadores |
+| `PATCH/DELETE /api/v1/employees/:id` | `employees:EDIT`/`DELETE` | Actualizar / dar de baja (soft delete) |
+| `GET /api/v1/employees/:id/security-passport` | `employees:VIEW` | Pasaporte digital de seguridad (§11) |
+| `GET/POST /api/v1/brigadists` | `brigade:VIEW`/`CREATE` | Alta y listado de brigadistas |
+| `GET /api/v1/brigadists/:id/competency-status` | `brigade:VIEW` | Semáforo de competencia calculado (§8) |
+| `GET/POST /api/v1/inspections` | `inspections:VIEW`/`CREATE` | Inspecciones sobre una plantilla |
+| `GET /api/v1/inspections/:id` | `inspections:VIEW` | Detalle con hallazgos y acciones |
+| `POST /api/v1/inspections/:id/findings` | `findings:CREATE` | Registra el hallazgo **y** su acción correctiva en una sola transacción |
+| `GET /api/v1/findings` | `findings:VIEW` | Listado, filtrable por `?status=` |
+| `PATCH /api/v1/findings/:id/closure-evidence` | `findings:EDIT` | Sube evidencia de cierre → `PENDING_VERIFICATION` |
+| `PATCH /api/v1/findings/:id/verify` | `findings:APPROVE` | Verifica y cierra hallazgo + acción correctiva |
+| `GET /api/v1/corrective-actions` | `findings:VIEW` | Filtrable por `?status=` y `?overdue=true` |
+| `GET /api/v1/indicators/dashboard` | `dashboard:VIEW` | Indicadores generales (§6) — se actualiza en vivo al cerrar hallazgos |
+
+### 2.2 Endpoints planeados (mismo patrón, pendientes de Fase 4)
+
+- `PATCH /api/v1/emergencies/:id` / evento WebSocket — activar/actualizar estado de emergencia.
+- `GET /api/v1/brigadists/:id/id-card` — carné digital con QR.
 - `POST /api/v1/danger-reports` — reporte de condición insegura desde la PWA.
 - `GET /api/v1/qr/:code` — resolución de QR (equipo, brigadista, credencial).
+- Contratistas, EPP, equipos de emergencia, plan de emergencias/simulacros,
+  permisos de trabajo, COPASST, auditorías, documentos, notificaciones.
 
 ## 3. WebSocket (Centro de Comando)
 

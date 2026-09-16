@@ -5,12 +5,13 @@ en el Trabajo (SG-SST), brigadas de emergencia, gestión del riesgo,
 inspecciones, capacitación, accidentalidad, contratistas, auditorías,
 indicadores e IA preventiva.
 
-> **Estado del proyecto: Fase 1 (Arquitectura) y Fase 3 (Base de datos)
-> completadas.** Este repositorio contiene la arquitectura maestra, el
-> schema de base de datos completo (48 modelos, PostgreSQL + Prisma,
-> Row-Level Security por tenant) y el seed de la empresa demo. La
-> implementación del backend y frontend avanza por fases (ver
-> `docs/ARCHITECTURE.md` §9 Roadmap).
+> **Estado del proyecto:** Fase 1 (Arquitectura) y Fase 3 (Base de datos)
+> completadas. Fase 4 (Backend) en progreso: autenticación JWT
+> (intercambiable dev/Amazon Cognito), RBAC granular, aislamiento
+> multi-tenant reforzado con Row-Level Security, auditoría automática, y
+> el flujo insignia completo (inspección → hallazgo → acción correctiva
+> → cierre → indicador) funcionando de punta a punta contra la base de
+> datos real. Ver `apps/api/README.md` para el detalle y cómo probarlo.
 
 ## Documentación
 
@@ -75,5 +76,7 @@ Row-Level Security multi-tenant y los datos de la empresa demo.
    equipo de producto.
 2. Fase 2 — UX/UI: wireframes de dashboard, inspecciones, carné de
    brigadista, pasaporte de seguridad, Centro de Comando.
-3. Fase 4 — Backend: NestJS + auth/RBAC + módulos núcleo del MVP sobre
-   el schema ya definido.
+3. Continuar la Fase 4 — Backend: replicar el patrón ya establecido
+   (`apps/api/src/modules/*`) en los módulos restantes del MVP
+   (contratistas, EPP, equipos de emergencia, plan de emergencias,
+   documentos, notificaciones, auditorías, COPASST).
