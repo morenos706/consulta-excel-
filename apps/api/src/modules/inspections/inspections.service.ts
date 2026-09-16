@@ -11,8 +11,18 @@ export class InspectionsService {
     return this.prisma.forTenant(tenantId, (tx) =>
       tx.inspection.findMany({
         where: { tenantId, ...(siteId ? { siteId } : {}) },
-        include: { template: true, findings: true },
+        include: { template: true, site: true, findings: true },
         orderBy: { performedAt: 'desc' },
+      }),
+    );
+  }
+
+  /** Catálogo de plantillas activas, para el selector al crear una inspección. */
+  listTemplates(tenantId: string) {
+    return this.prisma.forTenant(tenantId, (tx) =>
+      tx.inspectionTemplate.findMany({
+        where: { tenantId, isActive: true },
+        orderBy: { name: 'asc' },
       }),
     );
   }

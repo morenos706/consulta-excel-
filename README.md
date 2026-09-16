@@ -11,8 +11,10 @@ indicadores e IA preventiva.
 > multi-tenant reforzado con Row-Level Security, auditoría automática, y
 > el flujo insignia completo (inspección → hallazgo → acción correctiva
 > → cierre → indicador) funcionando de punta a punta contra la base de
-> datos real. Fase 5 (Frontend web) iniciada: login + dashboard reales,
-> funcionando contra la API (ver pantallazos en `apps/web/README.md`).
+> datos real. Fase 5 (Frontend web) en progreso: login, dashboard,
+> trabajadores, brigada e inspecciones/hallazgos funcionando contra la
+> API real, con el flujo insignia completo operable desde la interfaz
+> (ver pantallazos y detalle en `apps/web/README.md`).
 > Fase 8 (infraestructura AWS) escrita en Terraform y revisada,
 > **pendiente de aplicarse en una cuenta real** (requiere aprobación y
 > credenciales de un humano — ver `docs/DEPLOYMENT.md`).

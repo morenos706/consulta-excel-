@@ -13,6 +13,7 @@ import { EmployeesModule } from './modules/employees/employees.module';
 import { FindingsModule } from './modules/findings/findings.module';
 import { IndicatorsModule } from './modules/indicators/indicators.module';
 import { InspectionsModule } from './modules/inspections/inspections.module';
+import { SitesModule } from './modules/sites/sites.module';
 import { HealthModule } from './health/health.module';
 
 @Module({
@@ -21,6 +22,7 @@ import { HealthModule } from './health/health.module';
     PrismaModule,
     HealthModule,
     AuthModule,
+    SitesModule,
     EmployeesModule,
     BrigadeModule,
     InspectionsModule,

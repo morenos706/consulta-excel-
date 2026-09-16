@@ -21,6 +21,13 @@ export class InspectionsController {
     return this.inspectionsService.findAll(user.tenantId, siteId);
   }
 
+  // Debe declararse antes de ":id" — si no, Nest interpretaria "templates" como un :id.
+  @Get('templates')
+  @RequirePermission('inspections', 'VIEW')
+  listTemplates(@CurrentUser() user: AuthenticatedUser) {
+    return this.inspectionsService.listTemplates(user.tenantId);
+  }
+
   @Get(':id')
   @RequirePermission('inspections', 'VIEW')
   findOne(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
