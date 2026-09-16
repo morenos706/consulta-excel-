@@ -11,7 +11,10 @@ indicadores e IA preventiva.
 > multi-tenant reforzado con Row-Level Security, auditoría automática, y
 > el flujo insignia completo (inspección → hallazgo → acción correctiva
 > → cierre → indicador) funcionando de punta a punta contra la base de
-> datos real. Ver `apps/api/README.md` para el detalle y cómo probarlo.
+> datos real. Fase 8 (infraestructura AWS) escrita en Terraform y
+> revisada, **pendiente de aplicarse en una cuenta real** (requiere
+> aprobación y credenciales de un humano — ver `docs/DEPLOYMENT.md`).
+> Ver `apps/api/README.md` para el backend y cómo probarlo.
 
 ## Documentación
 
@@ -70,13 +73,34 @@ npx prisma db seed
 Ver `docs/DATABASE.md` para el detalle del schema, la estrategia de
 Row-Level Security multi-tenant y los datos de la empresa demo.
 
+## Infraestructura AWS (Fase 8)
+
+```bash
+cd infra/terraform
+cp terraform.tfvars.example terraform.tfvars   # ajustar valores
+terraform init
+terraform plan -out=tfplan     # REVISAR el plan completo antes de aplicar
+terraform apply tfplan         # ejecutarlo solo con credenciales propias, tras revisar
+```
+
+Ver `docs/DEPLOYMENT.md` para el runbook completo, el costo estimado, y
+qué se validó de este código en esta sesión (formato + revisión manual)
+frente a lo que falta validar (`terraform plan` contra una cuenta real —
+el registro de Terraform estaba bloqueado por política de red en el
+entorno donde se escribió).
+
 ## Próximos pasos
 
-1. Validar el alcance del MVP (`docs/ARCHITECTURE.md` §10) con el
+1. Ejecutar `terraform plan`/`apply` de la Fase 8 desde un entorno con
+   acceso real a AWS y al registro de Terraform, y desplegar la primera
+   versión de la API.
+2. Validar el alcance del MVP (`docs/ARCHITECTURE.md` §10) con el
    equipo de producto.
-2. Fase 2 — UX/UI: wireframes de dashboard, inspecciones, carné de
+3. Fase 2 — UX/UI: wireframes de dashboard, inspecciones, carné de
    brigadista, pasaporte de seguridad, Centro de Comando.
-3. Continuar la Fase 4 — Backend: replicar el patrón ya establecido
+4. Continuar la Fase 4 — Backend: replicar el patrón ya establecido
    (`apps/api/src/modules/*`) en los módulos restantes del MVP
    (contratistas, EPP, equipos de emergencia, plan de emergencias,
    documentos, notificaciones, auditorías, COPASST).
+5. Fase 10 — CI/CD: pipeline de GitHub Actions que automatice el
+   runbook manual de `docs/DEPLOYMENT.md` §3.2.

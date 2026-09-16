@@ -24,3 +24,13 @@ npm-debug.log*
 
 # Prisma
 apps/api/prisma/dev.db
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+infra/terraform/terraform.tfvars
+crash.log
+crash.*.log

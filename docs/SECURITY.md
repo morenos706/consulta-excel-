@@ -44,8 +44,23 @@
 
 ## 4. Cifrado
 
-- **En tránsito**: TLS 1.2+ en todos los endpoints (CloudFront, ALB, RDS,
-  S3), sin excepciones.
+- **En tránsito**: TLS 1.2+ del navegador a CloudFront siempre, sin
+  excepción (`docs/ARCHITECTURE.md` §7). De CloudFront al ALB: **TLS
+  extremo a extremo cuando hay un dominio propio configurado**
+  (`infra/terraform/alb-tls.tf` emite un certificado ACM para el ALB y
+  CloudFront le habla por HTTPS). Sin dominio propio — por ejemplo, una
+  primera prueba en `*.cloudfront.net` — no existe forma de emitir un
+  certificado ACM válido para el DNS genérico del ALB, así que ese tramo
+  queda en HTTP dentro de la red privada de AWS: el ALB nunca es
+  alcanzable desde internet (solo acepta tráfico del prefix list
+  gestionado de CloudFront, `infra/terraform/security-groups.tf`), pero
+  el tramo no está cifrado. Esto es aceptable únicamente para
+  ambientes de prueba sin dominio; **todo ambiente de producción debe
+  configurar `domain_name` + `hosted_zone_id`** para cerrar esta
+  excepción. RDS usa TLS en la conexión de Prisma; los buckets S3 de
+  documentos y evidencias rechazan explícitamente cualquier solicitud
+  sin TLS mediante política de bucket (`infra/terraform/s3.tf`,
+  `aws:SecureTransport = false` → Deny).
 - **En reposo**: cifrado nativo de RDS (KMS), cifrado de buckets S3 (SSE-KMS),
   cifrado de snapshots y volúmenes EBS.
 - **Documentos sensibles**: URLs firmadas de S3 con expiración corta para

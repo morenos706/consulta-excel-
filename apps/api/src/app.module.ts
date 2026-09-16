@@ -13,11 +13,13 @@ import { EmployeesModule } from './modules/employees/employees.module';
 import { FindingsModule } from './modules/findings/findings.module';
 import { IndicatorsModule } from './modules/indicators/indicators.module';
 import { InspectionsModule } from './modules/inspections/inspections.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    HealthModule,
     AuthModule,
     EmployeesModule,
     BrigadeModule,
