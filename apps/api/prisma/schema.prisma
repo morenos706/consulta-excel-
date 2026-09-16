@@ -1,0 +1,1215 @@
+// Seguridad 360 Colombia — Schema de base de datos
+// Ver docs/DATABASE.md para el detalle de cada entidad y docs/ARCHITECTURE.md
+// para el modelo general. Aislamiento multi-tenant reforzado con Row-Level
+// Security (RLS) de PostgreSQL además del filtro de aplicación (ver
+// docs/SECURITY.md). Las políticas RLS se crean en la migración SQL
+// generada, no aquí (Prisma no gestiona RLS de forma nativa).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Núcleo: tenant, usuarios, roles y permisos (RBAC)
+// ---------------------------------------------------------------------------
+
+enum SubscriptionPlan {
+  BASICO
+  PROFESIONAL
+  EMPRESARIAL
+  CORPORATIVO
+}
+
+model Tenant {
+  id              String           @id @default(uuid())
+  name            String
+  taxId           String?          @unique
+  plan            SubscriptionPlan @default(BASICO)
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  users                User[]
+  roles                Role[]
+  sites                Site[]
+  employees            Employee[]
+  contractors          Contractor[]
+  brigadists           Brigadist[]
+  courses              Course[]
+  inspectionTemplates  InspectionTemplate[]
+  inspections          Inspection[]
+  findings             Finding[]
+  correctiveActions    CorrectiveAction[]
+  hazards              Hazard[]
+  riskAssessments      RiskAssessment[]
+  accidents            Accident[]
+  incidents            Incident[]
+  ppeItems             PPEItem[]
+  ppeAssignments       PPEAssignment[]
+  emergencyEquipment   EmergencyEquipment[]
+  maintenances         Maintenance[]
+  emergencyPlans       EmergencyPlan[]
+  drills               Drill[]
+  emergencies          Emergency[]
+  workPermits          WorkPermit[]
+  audits               Audit[]
+  copasstMembers       CopasstMember[]
+  copasstMeetings      CopasstMeeting[]
+  documents            Document[]
+  notifications        Notification[]
+  reports              Report[]
+  auditLogs            AuditLog[]
+  workflowStates       WorkflowState[]
+  workflowTransitions  WorkflowTransition[]
+
+  @@map("tenants")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model User {
+  id                String     @id @default(uuid())
+  tenantId          String
+  tenant            Tenant     @relation(fields: [tenantId], references: [id])
+  cognitoSub        String     @unique // subject de Amazon Cognito
+  email             String
+  fullName          String
+  phone             String?
+  status            UserStatus @default(ACTIVE)
+  roleId            String
+  role              Role       @relation(fields: [roleId], references: [id])
+  employeeId        String?    @unique
+  employee          Employee?  @relation(fields: [employeeId], references: [id])
+  mfaEnabled        Boolean    @default(false)
+  lastLoginAt       DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  deletedAt         DateTime?
+
+  correctiveActionsAssigned CorrectiveAction[]     @relation("CorrectiveActionResponsible")
+  notifications             Notification[]
+  auditLogs                 AuditLog[]
+  digitalSignatures         DigitalSignature[]
+  workflowTransitions       WorkflowTransition[]
+  documentsCreated          Document[]             @relation("DocumentCreatedBy")
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("users")
+}
+
+// Roles base del sistema (se siembran por tenant al crear la empresa,
+// pero cada tenant puede además crear roles personalizados).
+enum SystemRoleKey {
+  SUPER_ADMIN
+  COMPANY_ADMIN
+  MANAGER
+  SST_RESPONSIBLE
+  SST_COORDINATOR
+  SUPERVISOR
+  INSPECTOR
+  BRIGADIST
+  WORKER
+  CONTRACTOR
+  AUDITOR
+  MEDICAL_PROFESSIONAL
+  READONLY
+}
+
+model Role {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  name         String
+  systemKey    SystemRoleKey?
+  isCustom     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  users            User[]
+  rolePermissions  RolePermission[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("roles")
+}
+
+enum PermissionAction {
+  VIEW
+  CREATE
+  EDIT
+  DELETE
+  APPROVE
+  SIGN
+  DOWNLOAD
+  AUDIT
+  EXPORT
+}
+
+// Catálogo global de módulos + acción posible. No es tenant-scoped: es el
+// catálogo de "qué se puede permitir", los permisos concedidos sí lo son
+// vía RolePermission.
+model Permission {
+  id     String            @id @default(uuid())
+  module String            // p. ej. "inspections", "brigade", "documents"
+  action PermissionAction
+
+  rolePermissions RolePermission[]
+
+  @@unique([module, action])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  roleId       String
+  role         Role       @relation(fields: [roleId], references: [id])
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// ---------------------------------------------------------------------------
+// Organización: sedes, áreas, procesos
+// ---------------------------------------------------------------------------
+
+model Site {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  name      String
+  address   String?
+  city      String?
+  latitude  Float?
+  longitude Float?
+  isMain    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  areas               Area[]
+  employees           Employee[]
+  inspections         Inspection[]
+  emergencyEquipment  EmergencyEquipment[]
+  emergencyPlans      EmergencyPlan[]
+  emergencies         Emergency[]
+
+  @@index([tenantId])
+  @@map("sites")
+}
+
+model Area {
+  id        String   @id @default(uuid())
+  tenantId  String
+  siteId    String
+  site      Site     @relation(fields: [siteId], references: [id])
+  name      String
+  createdAt DateTime @default(now())
+
+  processes Process[]
+  employees Employee[]
+
+  @@index([tenantId])
+  @@index([siteId])
+  @@map("areas")
+}
+
+model Process {
+  id        String   @id @default(uuid())
+  tenantId  String
+  areaId    String
+  area      Area     @relation(fields: [areaId], references: [id])
+  name      String
+  createdAt DateTime @default(now())
+
+  hazards Hazard[]
+
+  @@index([tenantId])
+  @@index([areaId])
+  @@map("processes")
+}
+
+// ---------------------------------------------------------------------------
+// Personas: trabajadores, contratistas, brigada
+// ---------------------------------------------------------------------------
+
+enum EmploymentType {
+  DIRECT
+  TEMPORARY
+  APPRENTICE
+  OUTSOURCED
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+  ON_LEAVE
+}
+
+model Employee {
+  id                  String         @id @default(uuid())
+  tenantId            String
+  tenant              Tenant         @relation(fields: [tenantId], references: [id])
+  siteId              String
+  site                Site           @relation(fields: [siteId], references: [id])
+  areaId              String?
+  area                Area?          @relation(fields: [areaId], references: [id])
+  documentNumber      String
+  fullName            String
+  birthDate           DateTime?
+  position            String
+  employmentType      EmploymentType
+  hireDate            DateTime
+  status              EmployeeStatus @default(ACTIVE)
+  phone               String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  eps                 String?
+  arl                 String?
+  afp                 String?
+  // Datos de restricciones laborales: acceso restringido por rol/permiso a
+  // nivel de aplicación (ver docs/SECURITY.md §1 minimización de datos).
+  workRestrictions    String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  deletedAt           DateTime?
+
+  user                User?
+  brigadist           Brigadist?
+  ppeAssignments      PPEAssignment[]
+  trainingRecords     TrainingRecord[]
+  correctiveActions   CorrectiveAction[]      @relation("CorrectiveActionResponsibleEmployee")
+  accidents           Accident[]
+  digitalSignatures   DigitalSignature[]
+  workPermits         WorkPermit[]
+
+  @@unique([tenantId, documentNumber])
+  @@index([tenantId])
+  @@index([siteId])
+  @@map("employees")
+}
+
+enum ContractorApprovalStatus {
+  APPROVED   // APTO
+  PENDING    // PENDIENTE
+  REJECTED   // NO APTO
+}
+
+model Contractor {
+  id               String                   @id @default(uuid())
+  tenantId         String
+  tenant           Tenant                   @relation(fields: [tenantId], references: [id])
+  companyName      String
+  taxId            String
+  contactName      String
+  contactPhone     String?
+  approvalStatus   ContractorApprovalStatus @default(PENDING)
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+
+  documents   ContractorDocument[]
+  workPermits WorkPermit[]
+
+  @@unique([tenantId, taxId])
+  @@index([tenantId])
+  @@map("contractors")
+}
+
+model ContractorDocument {
+  id           String     @id @default(uuid())
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id])
+  type         String     // p. ej. "camara_comercio", "arl", "eps", "induccion"
+  s3Key        String
+  expiresAt    DateTime?
+  uploadedAt   DateTime   @default(now())
+
+  @@index([contractorId])
+  @@map("contractor_documents")
+}
+
+enum BrigadistStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum CompetencyLevel {
+  COMPLIES        // 🟢 Cumple
+  NEEDS_UPDATE    // 🟡 Requiere actualización
+  NON_COMPLIANT   // 🔴 No cumple
+}
+
+model Brigadist {
+  id           String          @id @default(uuid())
+  tenantId     String
+  tenant       Tenant          @relation(fields: [tenantId], references: [id])
+  employeeId   String          @unique
+  employee     Employee        @relation(fields: [employeeId], references: [id])
+  group        String?         // grupo/brigada al que pertenece
+  status       BrigadistStatus @default(ACTIVE)
+  joinedAt     DateTime        @default(now())
+  photoS3Key   String?
+  // Semáforo de competencia recalculado por el backend a partir de
+  // certificados y entrenamientos vigentes — se persiste como cache de
+  // lectura, no como fuente de verdad.
+  competencyLevel CompetencyLevel @default(NON_COMPLIANT)
+
+  competencies    BrigadistCompetency[]
+  certificates    Certificate[]
+  trainingRecords TrainingRecord[]
+
+  @@index([tenantId])
+  @@map("brigadists")
+}
+
+// Catálogo de competencias de brigada: primeros auxilios, contra
+// incendios, evacuación, rescate, comunicaciones, DEA, materiales
+// peligrosos, etc.
+model Competency {
+  id   String @id @default(uuid())
+  name String @unique
+
+  brigadistCompetencies BrigadistCompetency[]
+
+  @@map("competencies")
+}
+
+model BrigadistCompetency {
+  id           String          @id @default(uuid())
+  brigadistId  String
+  brigadist    Brigadist       @relation(fields: [brigadistId], references: [id])
+  competencyId String
+  competency   Competency      @relation(fields: [competencyId], references: [id])
+  level        CompetencyLevel @default(NON_COMPLIANT)
+  updatedAt    DateTime        @updatedAt
+
+  @@unique([brigadistId, competencyId])
+  @@map("brigadist_competencies")
+}
+
+// ---------------------------------------------------------------------------
+// Capacitación (LMS básico) y certificaciones
+// ---------------------------------------------------------------------------
+
+enum CourseType {
+  INDUCTION
+  REINDUCTION
+  SST
+  BRIGADE
+  FIRST_AID
+  EVACUATION
+  FIREFIGHTING
+  PPE
+  ELECTRICAL_RISK
+  HEIGHTS
+  CONFINED_SPACES
+  EMERGENCY
+}
+
+model Course {
+  id             String     @id @default(uuid())
+  tenantId       String
+  tenant         Tenant     @relation(fields: [tenantId], references: [id])
+  name           String
+  type           CourseType
+  durationHours  Float
+  validityMonths Int?       // vigencia del certificado emitido, si aplica
+  createdAt      DateTime   @default(now())
+
+  trainingRecords TrainingRecord[]
+
+  @@index([tenantId])
+  @@map("courses")
+}
+
+enum TrainingResult {
+  APPROVED
+  FAILED
+  PENDING
+}
+
+model TrainingRecord {
+  id           String          @id @default(uuid())
+  tenantId     String
+  courseId     String
+  course       Course          @relation(fields: [courseId], references: [id])
+  employeeId   String?
+  employee     Employee?       @relation(fields: [employeeId], references: [id])
+  brigadistId  String?
+  brigadist    Brigadist?      @relation(fields: [brigadistId], references: [id])
+  instructor   String?
+  date         DateTime
+  hours        Float
+  attended     Boolean         @default(true)
+  result       TrainingResult  @default(PENDING)
+  evidenceS3Key String?
+
+  certificate  Certificate?
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([brigadistId])
+  @@map("training_records")
+}
+
+enum CertificateStatus {
+  VALID
+  EXPIRING_SOON
+  EXPIRED
+}
+
+model Certificate {
+  id               String            @id @default(uuid())
+  tenantId         String
+  trainingRecordId String            @unique
+  trainingRecord   TrainingRecord    @relation(fields: [trainingRecordId], references: [id])
+  brigadistId      String?
+  brigadist        Brigadist?        @relation(fields: [brigadistId], references: [id])
+  issuedAt         DateTime          @default(now())
+  expiresAt        DateTime?
+  status           CertificateStatus @default(VALID)
+  certificateS3Key String?
+
+  @@index([tenantId])
+  @@index([brigadistId])
+  @@map("certificates")
+}
+
+// ---------------------------------------------------------------------------
+// Inspecciones y hallazgos
+// ---------------------------------------------------------------------------
+
+enum InspectionFieldType {
+  TEXT
+  NUMBER
+  BOOLEAN
+  SELECT
+  PHOTO
+  SIGNATURE
+  DATE
+}
+
+model InspectionTemplate {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  name      String   // p. ej. "Locativa", "EPP", "Extintores", "Trabajo en alturas"
+  category  String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  fields      InspectionField[]
+  inspections Inspection[]
+
+  @@index([tenantId])
+  @@map("inspection_templates")
+}
+
+model InspectionField {
+  id         String              @id @default(uuid())
+  templateId String
+  template   InspectionTemplate  @relation(fields: [templateId], references: [id])
+  label      String
+  type       InspectionFieldType
+  order      Int                 @default(0)
+  isRequired Boolean             @default(false)
+  options    Json?               // opciones para SELECT
+
+  @@index([templateId])
+  @@map("inspection_fields")
+}
+
+model Inspection {
+  id           String              @id @default(uuid())
+  tenantId     String
+  tenant       Tenant              @relation(fields: [tenantId], references: [id])
+  templateId   String
+  template     InspectionTemplate  @relation(fields: [templateId], references: [id])
+  siteId       String
+  site         Site                @relation(fields: [siteId], references: [id])
+  inspectorId  String              // referencia lógica a User.id (inspector)
+  performedAt  DateTime
+  latitude     Float?
+  longitude    Float?
+  answers      Json                // respuestas del formulario dinámico
+  observations String?
+  createdAt    DateTime            @default(now())
+
+  findings Finding[]
+
+  @@index([tenantId])
+  @@index([siteId])
+  @@map("inspections")
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum FindingStatus {
+  OPEN
+  IN_PROGRESS
+  OVERDUE
+  PENDING_VERIFICATION
+  CLOSED
+}
+
+model Finding {
+  id            String        @id @default(uuid())
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  inspectionId  String?
+  inspection    Inspection?   @relation(fields: [inspectionId], references: [id])
+  description   String
+  category      String
+  hazard        String?
+  riskLevel     RiskLevel
+  photoS3Key    String?
+  latitude      Float?
+  longitude     Float?
+  status        FindingStatus @default(OPEN)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  correctiveActions CorrectiveAction[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("findings")
+}
+
+enum ActionPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ActionStatus {
+  OPEN
+  IN_PROGRESS
+  OVERDUE
+  PENDING_VERIFICATION
+  CLOSED
+}
+
+model CorrectiveAction {
+  id                 String         @id @default(uuid())
+  tenantId           String
+  tenant             Tenant         @relation(fields: [tenantId], references: [id])
+  findingId          String?
+  finding            Finding?       @relation(fields: [findingId], references: [id])
+  origin             String         // "finding" | "audit" | "investigation" | "copasst"
+  description        String
+  priority           ActionPriority @default(MEDIUM)
+  responsibleUserId  String?
+  responsibleUser    User?          @relation("CorrectiveActionResponsible", fields: [responsibleUserId], references: [id])
+  responsibleEmployeeId String?
+  responsibleEmployee   Employee?   @relation("CorrectiveActionResponsibleEmployee", fields: [responsibleEmployeeId], references: [id])
+  dueDate            DateTime
+  status             ActionStatus   @default(OPEN)
+  closureEvidenceS3Key String?
+  verifiedAt         DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("corrective_actions")
+}
+
+// ---------------------------------------------------------------------------
+// Matriz de peligros y valoración del riesgo (referencia técnica GTC 45,
+// sujeta a verificación de vigencia — ver docs/SECURITY.md §7)
+// ---------------------------------------------------------------------------
+
+model Hazard {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  processId   String?
+  process     Process? @relation(fields: [processId], references: [id])
+  activity    String
+  task        String
+  description String
+  source      String?
+  consequence String?
+  createdAt   DateTime @default(now())
+
+  riskAssessments RiskAssessment[]
+
+  @@index([tenantId])
+  @@map("hazards")
+}
+
+model RiskAssessment {
+  id            String    @id @default(uuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+  hazardId      String
+  hazard        Hazard    @relation(fields: [hazardId], references: [id])
+  existingControls String?
+  probability   Int       // escala configurable, p. ej. 1-10 (GTC 45) o la metodología vigente aplicable
+  severity      Int
+  riskLevel     RiskLevel
+  acceptable    Boolean   @default(false)
+  intervention  String?
+  responsibleUserId String?
+  evaluatedAt   DateTime  @default(now())
+
+  @@index([tenantId])
+  @@map("risk_assessments")
+}
+
+// ---------------------------------------------------------------------------
+// Accidentes, incidentes e investigación
+// ---------------------------------------------------------------------------
+
+model Accident {
+  id           String    @id @default(uuid())
+  tenantId     String
+  tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  employeeId   String
+  employee     Employee  @relation(fields: [employeeId], references: [id])
+  occurredAt   DateTime
+  location     String
+  activity     String
+  description  String
+  injury       String?
+  bodyPart     String?
+  witnesses    String?
+  evidenceS3Key String?
+  initialCare  String?
+  createdAt    DateTime  @default(now())
+
+  investigation Investigation?
+
+  @@index([tenantId])
+  @@map("accidents")
+}
+
+model Incident {
+  id           String    @id @default(uuid())
+  tenantId     String
+  tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  occurredAt   DateTime
+  location     String
+  description  String
+  evidenceS3Key String?
+  createdAt    DateTime  @default(now())
+
+  investigation Investigation?
+
+  @@index([tenantId])
+  @@map("incidents")
+}
+
+model Investigation {
+  id                 String    @id @default(uuid())
+  accidentId         String?   @unique
+  accident           Accident? @relation(fields: [accidentId], references: [id])
+  incidentId         String?   @unique
+  incident           Incident? @relation(fields: [incidentId], references: [id])
+  immediateCauses    String?
+  basicCauses        String?
+  unsafeActs         String?
+  unsafeConditions   String?
+  personalFactors    String?
+  jobFactors         String?
+  fiveWhysAnalysis   Json?
+  causalTree         Json?
+  reportS3Key        String?
+  createdAt          DateTime  @default(now())
+  closedAt           DateTime?
+
+  @@map("investigations")
+}
+
+// ---------------------------------------------------------------------------
+// EPP
+// ---------------------------------------------------------------------------
+
+model PPEItem {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  name      String
+  brand     String?
+  reference String?
+  createdAt DateTime @default(now())
+
+  assignments PPEAssignment[]
+
+  @@index([tenantId])
+  @@map("ppe_items")
+}
+
+model PPEAssignment {
+  id             String    @id @default(uuid())
+  tenantId       String
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+  employeeId     String
+  employee       Employee  @relation(fields: [employeeId], references: [id])
+  ppeItemId      String
+  ppeItem        PPEItem   @relation(fields: [ppeItemId], references: [id])
+  size           String?
+  deliveredAt    DateTime  @default(now())
+  replacementDue DateTime?
+  signatureS3Key String?
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@map("ppe_assignments")
+}
+
+// ---------------------------------------------------------------------------
+// Equipos de emergencia y mantenimiento
+// ---------------------------------------------------------------------------
+
+enum EmergencyEquipmentType {
+  EXTINGUISHER
+  AED
+  FIRST_AID_KIT
+  STRETCHER
+  RADIO
+  ALARM
+  CABINET
+  RESCUE_EQUIPMENT
+  FIRE_EQUIPMENT
+}
+
+model EmergencyEquipment {
+  id               String                 @id @default(uuid())
+  tenantId         String
+  tenant           Tenant                 @relation(fields: [tenantId], references: [id])
+  siteId           String
+  site             Site                   @relation(fields: [siteId], references: [id])
+  code             String                 // p. ej. "EXT-00045", visible en el QR
+  type             EmergencyEquipmentType
+  brand            String?
+  model            String?
+  acquiredAt       DateTime?
+  lastInspectionAt DateTime?
+  nextInspectionAt DateTime?
+  status           String                 @default("OPERATIONAL")
+
+  maintenances Maintenance[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([siteId])
+  @@map("emergency_equipment")
+}
+
+enum MaintenanceType {
+  PREVENTIVE
+  CORRECTIVE
+}
+
+model Maintenance {
+  id           String              @id @default(uuid())
+  tenantId     String
+  tenant       Tenant              @relation(fields: [tenantId], references: [id])
+  equipmentId  String
+  equipment    EmergencyEquipment  @relation(fields: [equipmentId], references: [id])
+  type         MaintenanceType
+  scheduledFor DateTime
+  performedAt  DateTime?
+  provider     String?
+  cost         Decimal?            @db.Decimal(12, 2)
+  evidenceS3Key String?
+  status       String              @default("SCHEDULED")
+
+  @@index([tenantId])
+  @@index([equipmentId])
+  @@map("maintenances")
+}
+
+// ---------------------------------------------------------------------------
+// Plan de emergencias, simulacros y centro de comando
+// ---------------------------------------------------------------------------
+
+model EmergencyPlan {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  siteId       String
+  site         Site     @relation(fields: [siteId], references: [id])
+  threats      String?
+  vulnerability String?
+  resources    String?
+  organization String?
+  procedures   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  scenarios EmergencyScenario[]
+
+  @@index([tenantId])
+  @@map("emergency_plans")
+}
+
+model EmergencyScenario {
+  id              String        @id @default(uuid())
+  emergencyPlanId String
+  emergencyPlan   EmergencyPlan @relation(fields: [emergencyPlanId], references: [id])
+  name            String        // evacuación, incendio, sismo, derrame, emergencia médica...
+  description     String?
+
+  drills Drill[]
+
+  @@map("emergency_scenarios")
+}
+
+model Drill {
+  id                 String            @id @default(uuid())
+  tenantId           String
+  tenant             Tenant            @relation(fields: [tenantId], references: [id])
+  scenarioId         String
+  scenario           EmergencyScenario @relation(fields: [scenarioId], references: [id])
+  objective          String?
+  performedAt        DateTime
+  participantsCount  Int?
+  brigadistsCount    Int?
+  observersCount     Int?
+  responseTimeSeconds Int?
+  evacuationTimeSeconds Int?
+  evacuatedCount     Int?
+  resourcesUsed      String?
+  weaknesses         String?
+  strengths          String?
+  evidenceS3Key      String?
+
+  @@index([tenantId])
+  @@map("drills")
+}
+
+enum EmergencyStatus {
+  NORMAL
+  PRE_ALERT
+  ALERT
+  EMERGENCY
+}
+
+model Emergency {
+  id          String          @id @default(uuid())
+  tenantId    String
+  tenant      Tenant          @relation(fields: [tenantId], references: [id])
+  siteId      String
+  site        Site            @relation(fields: [siteId], references: [id])
+  status      EmergencyStatus @default(NORMAL)
+  triggeredById String?       // referencia lógica a User.id que activó el botón de emergencia
+  description String?
+  latitude    Float?
+  longitude   Float?
+  startedAt   DateTime        @default(now())
+  resolvedAt  DateTime?
+
+  @@index([tenantId])
+  @@index([siteId])
+  @@map("emergencies")
+}
+
+// ---------------------------------------------------------------------------
+// Permisos de trabajo
+// ---------------------------------------------------------------------------
+
+enum WorkPermitType {
+  HOT_WORK
+  HEIGHTS
+  CONFINED_SPACE
+  ELECTRICAL_RISK
+  EXCAVATION
+  LIFTING
+  OTHER
+}
+
+enum WorkPermitStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  CLOSED
+}
+
+model WorkPermit {
+  id            String            @id @default(uuid())
+  tenantId      String
+  tenant        Tenant            @relation(fields: [tenantId], references: [id])
+  type          WorkPermitType
+  employeeId    String?
+  employee      Employee?         @relation(fields: [employeeId], references: [id])
+  contractorId  String?
+  contractor    Contractor?       @relation(fields: [contractorId], references: [id])
+  requirementsChecklist Json?     // resultado de la verificación de requisitos previa a aprobar
+  status        WorkPermitStatus  @default(DRAFT)
+  approvedById  String?
+  approvedAt    DateTime?
+  validFrom     DateTime?
+  validTo       DateTime?
+  createdAt     DateTime          @default(now())
+
+  @@index([tenantId])
+  @@map("work_permits")
+}
+
+// ---------------------------------------------------------------------------
+// COPASST
+// ---------------------------------------------------------------------------
+
+model CopasstMember {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  employeeId String
+  role       String   // representante trabajadores / empleador
+  startDate  DateTime
+  endDate    DateTime?
+
+  @@index([tenantId])
+  @@map("copasst_members")
+}
+
+model CopasstMeeting {
+  id            String   @id @default(uuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  heldAt        DateTime
+  agenda        String?
+  minutesS3Key  String?
+  commitments   Json?    // lista de compromisos con responsable y fecha
+
+  @@index([tenantId])
+  @@map("copasst_meetings")
+}
+
+// ---------------------------------------------------------------------------
+// Auditorías
+// ---------------------------------------------------------------------------
+
+enum AuditStatus {
+  PLANNED
+  IN_PROGRESS
+  CLOSED
+}
+
+model Audit {
+  id          String      @id @default(uuid())
+  tenantId    String
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  name        String
+  scope       String?
+  checklist   Json?
+  status      AuditStatus @default(PLANNED)
+  scheduledFor DateTime?
+  createdAt   DateTime    @default(now())
+
+  findings AuditFinding[]
+
+  @@index([tenantId])
+  @@map("audits")
+}
+
+model AuditFinding {
+  id              String   @id @default(uuid())
+  auditId         String
+  audit           Audit    @relation(fields: [auditId], references: [id])
+  description     String
+  isNonConformity Boolean  @default(true)
+  evidenceS3Key   String?
+  responsibleUserId String?
+  dueDate         DateTime?
+  status          ActionStatus @default(OPEN)
+
+  @@index([auditId])
+  @@map("audit_findings")
+}
+
+// ---------------------------------------------------------------------------
+// Gestión documental y firma digital
+// ---------------------------------------------------------------------------
+
+enum DocumentCategory {
+  SST
+  EMERGENCY_PLAN
+  BRIGADE
+  TRAINING
+  INSPECTION
+  ACCIDENT
+  CONTRACTOR
+  AUDIT
+  PROCEDURE
+  PROTOCOL
+}
+
+model Document {
+  id            String           @id @default(uuid())
+  tenantId      String
+  tenant        Tenant           @relation(fields: [tenantId], references: [id])
+  title         String
+  category      DocumentCategory
+  createdById   String
+  createdBy     User             @relation("DocumentCreatedBy", fields: [createdById], references: [id])
+  expiresAt     DateTime?
+  createdAt     DateTime         @default(now())
+
+  versions   DocumentVersion[]
+  signatures DigitalSignature[]
+
+  @@index([tenantId])
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id         String   @id @default(uuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+  version    Int
+  s3Key      String
+  uploadedAt DateTime @default(now())
+  uploadedById String
+
+  @@unique([documentId, version])
+  @@map("document_versions")
+}
+
+model DigitalSignature {
+  id          String    @id @default(uuid())
+  tenantId    String
+  documentId  String
+  document    Document  @relation(fields: [documentId], references: [id])
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+  employeeId  String?
+  employee    Employee? @relation(fields: [employeeId], references: [id])
+  signedAt    DateTime  @default(now())
+  ipAddress   String
+  hash        String?
+
+  @@index([tenantId])
+  @@index([documentId])
+  @@map("digital_signatures")
+}
+
+// ---------------------------------------------------------------------------
+// Notificaciones y reportes
+// ---------------------------------------------------------------------------
+
+enum NotificationChannel {
+  EMAIL
+  PUSH
+  IN_APP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  READ
+}
+
+model Notification {
+  id        String              @id @default(uuid())
+  tenantId  String
+  tenant    Tenant              @relation(fields: [tenantId], references: [id])
+  userId    String
+  user      User                @relation(fields: [userId], references: [id])
+  channel   NotificationChannel
+  title     String
+  body      String
+  status    NotificationStatus  @default(PENDING)
+  createdAt DateTime            @default(now())
+  sentAt    DateTime?
+  readAt    DateTime?
+
+  @@index([tenantId])
+  @@index([userId])
+  @@map("notifications")
+}
+
+model Report {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  type       String   // p. ej. "brigade", "inspections", "indicators"
+  format     String   // "PDF" | "EXCEL"
+  s3Key      String
+  requestedById String
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@map("reports")
+}
+
+// ---------------------------------------------------------------------------
+// Auditoría del sistema (trazabilidad de acciones críticas)
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id])
+  action       String   // p. ej. "UPDATE", "CREATE", "DELETE", "APPROVE"
+  entityType   String   // p. ej. "Inspection"
+  entityId     String
+  previousValue Json?
+  newValue     Json?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Motor de workflow genérico (reutilizable en inspecciones, accidentes,
+// auditorías, acciones y permisos de trabajo — ver docs/ARCHITECTURE.md §8)
+// ---------------------------------------------------------------------------
+
+model WorkflowState {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  entityType String
+  entityId   String
+  status     String
+  enteredAt  DateTime @default(now())
+
+  @@unique([entityType, entityId])
+  @@index([tenantId])
+  @@map("workflow_states")
+}
+
+model WorkflowTransition {
+  id             String   @id @default(uuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  entityType     String
+  entityId       String
+  fromStatus     String?
+  toStatus       String
+  performedById  String
+  performedBy    User     @relation(fields: [performedById], references: [id])
+  performedAt    DateTime @default(now())
+  comment        String?
+
+  @@index([tenantId])
+  @@index([entityType, entityId])
+  @@map("workflow_transitions")
+}

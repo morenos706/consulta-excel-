@@ -1,0 +1,20 @@
+# Copiar a terraform.tfvars y ajustar. Nunca commitear terraform.tfvars
+# con valores reales de producción (ver .gitignore).
+
+environment = "staging"
+aws_region  = "us-east-1"
+
+single_nat_gateway = true   # false en producción (un NAT por AZ)
+db_instance_class  = "db.t4g.micro"
+db_multi_az        = false  # true en producción
+
+ecs_desired_count = 1
+ecs_min_count     = 1
+ecs_max_count     = 4
+
+# Dejar vacío para desplegar sin dominio propio (usa *.cloudfront.net).
+domain_name    = ""
+hosted_zone_id = ""
+
+ops_alert_email  = ""
+ses_from_address = ""

@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tokens de diseño — paleta de estado tomada de la skill dataviz
+   (references/palette.md), fija y no temática: good/warning/serious/
+   critical se usan siempre con icono + etiqueta, nunca solo color. */
+:root {
+  color-scheme: light;
+  --surface-1: #fcfcfb;
+  --surface-2: #f4f3f1;
+  --border: #e4e2dd;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #85837c;
+  --brand: #184f95;
+
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+  --status-critical-soft: #fbebea;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --border: #33322f;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #8b8a82;
+    --brand: #3987e5;
+    --status-critical-soft: #3a2220;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --surface-1: #1a1a19;
+  --surface-2: #232322;
+  --border: #33322f;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #8b8a82;
+  --brand: #3987e5;
+  --status-critical-soft: #3a2220;
+}
+
+body {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+@layer components {
+  .input {
+    @apply w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none;
+  }
+  .input:focus {
+    border-color: var(--brand);
+  }
+}
