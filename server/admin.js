@@ -62,7 +62,7 @@ function datosHabitacion(b) {
     piso: entero(b.piso) ?? 1,
     capacidad: entero(b.capacidad),
     tipo: mayus(b.tipo, 20) || 'MIXTA',
-    accesible: bool(b.accesible),
+    accesible: false,
     bano_privado: bool(b.bano_privado),
     activa: b.activa === undefined ? true : bool(b.activa),
     notas: opcional(b.notas, 300),
@@ -386,7 +386,6 @@ async function estadoAcomodacion(eventoId, t = { query, uno }) {
       porTipo: TIPOS_PERSONA.map((tp) => ({ tipo: tp, total: inscritos.filter((i) => i.tipo_persona === tp).length })),
       porSexo: { F: inscritos.filter((i) => i.sexo === 'F').length, M: inscritos.filter((i) => i.sexo === 'M').length },
       menores: inscritos.filter((i) => i.edad < 18).length,
-      movilidadReducida: inscritos.filter((i) => i.movilidad_reducida).length,
       matrimoniosPendientes: inscritos.filter((i) => i.tipo_persona === 'MATRIMONIO' && !i.conyuge_inscripcion_id).length,
     },
   };

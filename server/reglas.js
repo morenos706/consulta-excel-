@@ -62,9 +62,6 @@ export function evaluar(hab, ocupantes) {
   if (hayM && hayF && ['MIXTA', 'PRESBITEROS'].includes(hab.tipo) && !todosEnPareja(ocupantes)) {
     avisos.push(`${nombre} quedaría con hombres y mujeres que no son matrimonio`);
   }
-  for (const o of ocupantes) {
-    if (o.movilidad_reducida && !hab.accesible) avisos.push(`${o.nombre} tiene movilidad reducida y la ${nombre.toLowerCase()} no es accesible`);
-  }
   return { errores, avisos };
 }
 
@@ -76,7 +73,7 @@ function preferencias(p) {
 
 /**
  * Asignación automática.
- * habitaciones: [{ id, codigo, tipo, capacidad, accesible, activa, ocupantes: [inscripción, ...] }]
+ * habitaciones: [{ id, codigo, tipo, capacidad, activa, ocupantes: [inscripción, ...] }]
  * pendientes: inscripciones sin habitación (no canceladas).
  * Si un matrimonio quedó separado porque uno de los cónyuges se inscribió tarde, se reúnen en otra habitación
  * (la asignación del cónyuge ya acomodado se marca con reubicado: true).
@@ -97,12 +94,10 @@ export function asignarAutomatico(habitaciones, pendientes) {
   const libre = (h) => h.capacidad - h.ocupantes.length;
   const comunidadComun = (h, grupo) => grupo.some((g) => g.comunidad && h.ocupantes.some((o) => o.comunidad === g.comunidad));
 
-  function valido(h, grupo, toleraMovilidad) {
+  function valido(h, grupo) {
     if (libre(h) < grupo.length) return false;
     const { errores, avisos } = evaluar(h, [...h.ocupantes, ...grupo]);
-    if (errores.length) return false;
-    const resto = toleraMovilidad ? avisos.filter((a) => !a.includes('movilidad reducida')) : avisos;
-    return resto.length === 0;
+    return !errores.length && !avisos.length;
   }
 
   function colocar(h, grupo) {
@@ -116,25 +111,16 @@ export function asignarAutomatico(habitaciones, pendientes) {
 
   /** Elige la mejor habitación entre las candidatas según una función de puntaje (menor es mejor). */
   function elegir(candidatas, grupo, puntaje) {
-    for (const tolera of [false, true]) {
-      const ok = candidatas.filter((h) => valido(h, grupo, tolera));
-      if (ok.length) return ok.sort((a, b) => puntaje(a) - puntaje(b) || a.codigo.localeCompare(b.codigo, 'es', { numeric: true }))[0];
-    }
-    return null;
+    const ok = candidatas.filter((h) => valido(h, grupo));
+    return ok.sort((a, b) => puntaje(a) - puntaje(b) || a.codigo.localeCompare(b.codigo, 'es', { numeric: true }))[0] || null;
   }
 
-  const necesitaAcceso = (grupo) => grupo.some((g) => g.movilidad_reducida);
-  const puntajePareja = (par) => {
-    const acceso = necesitaAcceso(par);
-    return (x) => {
-      let s = 0;
-      if (x.tipo !== 'MATRIMONIAL') s += 100;
-      if (x.ocupantes.length) s += 50;            // preferir habitación propia para el matrimonio
-      s += (libre(x) - 2) * 5;                     // ajuste exacto
-      if (acceso && !x.accesible) s += 200;
-      if (!acceso && x.accesible) s += 3;
-      return s;
-    };
+  const puntajePareja = () => (x) => {
+    let s = 0;
+    if (x.tipo !== 'MATRIMONIAL') s += 100;
+    if (x.ocupantes.length) s += 50;            // preferir habitación propia para el matrimonio
+    s += (libre(x) - 2) * 5;                     // ajuste exacto
+    return s;
   };
 
   // 1. Matrimonios con ambos cónyuges pendientes o con el cónyuge ya acomodado.
@@ -147,7 +133,7 @@ export function asignarAutomatico(habitaciones, pendientes) {
       if (p.id < c) parejas.push([p, porId.get(c)]);
     } else if (c && habDe.has(c)) {
       const h = habDe.get(c);
-      if (valido(h, [p], true)) { colocar(h, [p]); continue; }
+      if (valido(h, [p])) { colocar(h, [p]); continue; }
       // El cónyuge quedó en una habitación donde no cabe la pareja: se reúnen en otra habitación libre.
       const conyuge = h.ocupantes.find((o) => o.id === c);
       const par = [conyuge, p];
@@ -165,17 +151,15 @@ export function asignarAutomatico(habitaciones, pendientes) {
       solos.push(p);
     }
   }
-  parejas.sort((a, b) => Number(necesitaAcceso(b)) - Number(necesitaAcceso(a)));
   for (const par of parejas) {
     const h = elegir(habs, par, puntajePareja(par));
     if (h) colocar(h, par);
     else for (const p of par) sinLugar.push({ inscripcion_id: p.id, nombre: p.nombre, motivo: 'No hay habitación matrimonial o familiar con 2 camas libres' });
   }
 
-  // 2. Personas solas: primero quienes tienen movilidad reducida, luego clero, luego por comunidad.
+  // 2. Personas solas: primero clero, luego por comunidad.
   solos.sort((a, b) =>
-    Number(b.movilidad_reducida) - Number(a.movilidad_reducida)
-    || Number(CLERO.has(b.tipo_persona)) - Number(CLERO.has(a.tipo_persona))
+    Number(CLERO.has(b.tipo_persona)) - Number(CLERO.has(a.tipo_persona))
     || (a.comunidad || '~').localeCompare(b.comunidad || '~', 'es')
     || (a.edad ?? 0) - (b.edad ?? 0));
   for (const p of solos) {
@@ -184,8 +168,6 @@ export function asignarAutomatico(habitaciones, pendientes) {
     const candidatas = habs.filter((h) => pref.includes(h.tipo));
     const h = elegir(candidatas, [p], (x) => {
       let s = pref.indexOf(x.tipo) * 100;
-      if (p.movilidad_reducida && !x.accesible) s += 200;
-      if (!p.movilidad_reducida && x.accesible) s += 3;
       if (comunidadComun(x, [p])) s -= 20;         // mantener juntas a las comunidades
       if (x.ocupantes.length) s -= 10;             // llenar primero habitaciones ya ocupadas
       s += libre(x);                               // mejor ajuste

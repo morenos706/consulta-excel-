@@ -61,7 +61,6 @@ export async function excelInscritos(ev, inscritos) {
     { key: 'parroquia', header: 'Parroquia', width: 20 },
     { key: 'conyuge', header: 'Cónyuge', width: 26 },
     { key: 'acudiente', header: 'Acudiente (menores)', width: 30 },
-    { key: 'movilidad', header: 'Movilidad reducida', width: 10 },
     { key: 'necesidades', header: 'Necesidades / salud', width: 28 },
     { key: 'habitacion', header: 'Habitación', width: 14 },
     { key: 'estado', header: 'Estado', width: 12 },
@@ -76,7 +75,7 @@ export async function excelInscritos(ev, inscritos) {
       comunidad: i.comunidad, parroquia: i.parroquia,
       conyuge: i.conyuge_nombre ? `${i.conyuge_nombre} ${i.conyuge_apellido}` : (i.tipo_persona === 'MATRIMONIO' ? `Pendiente${i.conyuge_identificacion ? ` (${i.conyuge_identificacion})` : ''}` : ''),
       acudiente: i.acudiente_nombre ? `${i.acudiente_nombre} ${i.acudiente_apellido} · ${i.acudiente_celular}` : '',
-      movilidad: i.movilidad_reducida ? 'Sí' : '', necesidades: i.necesidades, habitacion: habTexto(i),
+      necesidades: i.necesidades, habitacion: habTexto(i),
       estado: ESTADOS[i.estado], creado: new Date(i.creado).toLocaleString('es-CO', { timeZone: 'America/Bogota' }), observaciones: i.observaciones,
     });
   });
@@ -111,7 +110,7 @@ export async function excelAcomodacion({ evento, habitaciones, sinAsignar }) {
         bloque: h.bloque, piso: h.piso, codigo: h.codigo, tipo: TIPOS_HABITACION[h.tipo], cama: c + 1,
         persona: o ? `${o.apellido} ${o.nombre}` : '— libre —', identificacion: o?.identificacion, tipo_persona: o?.tipo_persona,
         sexo: o ? sexo(o.sexo) : '', edad: o?.edad, comunidad: o?.comunidad, celular: o?.celular,
-        notas: o ? [o.movilidad_reducida ? 'Movilidad reducida' : '', o.necesidades || ''].filter(Boolean).join(' · ') : '',
+        notas: o?.necesidades || '',
       });
       if (!o) ws.getRow(ws.rowCount).font = { color: { argb: 'FF999999' }, italic: true };
     }
@@ -150,7 +149,6 @@ export async function leerHabitacionesExcel(buffer) {
     piso: ['piso', 'nivel'],
     capacidad: ['capacidad', 'camas', 'cupo', 'plazas'],
     tipo: ['tipo', 'uso', 'destino'],
-    accesible: ['accesible', 'movilidad reducida', 'discapacidad'],
     bano_privado: ['bano privado', 'bano', 'banio privado'],
     notas: ['notas', 'observaciones'],
   };
@@ -179,7 +177,7 @@ export async function leerHabitacionesExcel(buffer) {
       datos: {
         codigo: val('codigo'), bloque: val('bloque'), piso: val('piso') || 1, capacidad: val('capacidad'),
         tipo: tipoTxt ? (tipos[tipoTxt] || tipoTxt.toUpperCase()) : 'MIXTA',
-        accesible: si(val('accesible')), bano_privado: si(val('bano_privado')), notas: val('notas'),
+        bano_privado: si(val('bano_privado')), notas: val('notas'),
       },
     });
   }

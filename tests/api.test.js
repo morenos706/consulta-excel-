@@ -53,7 +53,7 @@ test('sede, habitaciones y evento', async () => {
   assert.equal(r.body.creadas, 3);
   r = await api('POST', `/sedes/${sede.id}/habitaciones/lote`, { desde: 201, hasta: 202, capacidad: 3, tipo: 'MUJERES', piso: 2 });
   r = await api('POST', `/sedes/${sede.id}/habitaciones/lote`, { desde: 301, hasta: 302, capacidad: 3, tipo: 'HOMBRES', piso: 3 });
-  r = await api('POST', `/sedes/${sede.id}/habitaciones`, { codigo: 'P1', capacidad: 2, tipo: 'PRESBITEROS', accesible: true });
+  r = await api('POST', `/sedes/${sede.id}/habitaciones`, { codigo: 'P1', capacidad: 2, tipo: 'PRESBITEROS' });
   assert.equal(r.status, 201);
   assert.equal((await api('POST', `/sedes/${sede.id}/habitaciones`, { codigo: 'P1', capacidad: 2 })).status, 409);
   r = await api('POST', '/eventos', { nombre: 'Convivencia del Shemá', tipo: 'SHEMA', fecha_inicio: `${Y}-11-20`, fecha_fin: `${Y}-11-22`, fecha_limite: `${Y}-11-11`, sede_id: sede.id });
@@ -94,7 +94,7 @@ test('inscripción pública y vínculo de matrimonio', async () => {
 
   // Otros participantes
   await ok(persona({ identificacion: '4001', nombre: 'Luis', sexo: 'M', tipo_persona: 'HOMBRE SOLO', email: 'l@example.com' }));
-  await ok(persona({ identificacion: '4002', nombre: 'Pedro', sexo: 'M', tipo_persona: 'PRESBITERO', email: 'p@example.com', movilidad_reducida: true }));
+  await ok(persona({ identificacion: '4002', nombre: 'Pedro', sexo: 'M', tipo_persona: 'PRESBITERO', email: 'p@example.com' }));
   await ok(persona({ identificacion: '4003', nombre: 'Rosa', email: 'r@example.com', comunidad: 'Madre del Salvador' }));
   // Menor con acudiente
   r = await ok(persona({
@@ -169,7 +169,7 @@ test('importar habitaciones desde Excel', async () => {
   const ExcelJS = (await import('exceljs')).default;
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Hab');
-  ws.addRow(['Habitación', 'Bloque', 'Piso', 'Camas', 'Tipo', 'Accesible']);
+  ws.addRow(['Habitación', 'Bloque', 'Piso', 'Camas', 'Tipo', 'Baño privado']);
   ws.addRow(['401', 'B', 4, 4, 'Mujeres', 'sí']);
   ws.addRow(['101', '', 1, 2, 'Matrimonial', '']);
   const b64 = Buffer.from(await wb.xlsx.writeBuffer()).toString('base64');

@@ -9,18 +9,18 @@ Sistema web para **inscribir participantes a eventos** (convivencias, retiros, S
 - Fotos del frente y reverso del documento con la cámara del celular (se comprimen antes de enviarse). Si la persona ya asistió a otro evento, puede reutilizar las fotos que ya están guardadas.
 - Menores de 18 años: datos y documento del acudiente, que son obligatorios.
 - Matrimonios: se indica la identificación del cónyuge, o se marca "pendiente". Cuando el otro se inscribe, las dos inscripciones se vinculan solas y, si hay espacio, queda en la misma habitación de su cónyuge.
-- Movilidad reducida y necesidades de salud, para acomodar mejor a cada persona.
+- Condiciones de salud o necesidades especiales (texto libre).
 - Fecha límite, cupo máximo y cierre de inscripciones.
 
 **Administración** (`/admin`)
-- **Sedes y habitaciones**: número, bloque, piso, camas y tipo (matrimonial, hombres, mujeres, familiar, presbíteros, mixta). También se marca si es accesible, si tiene baño privado y si está fuera de servicio. Se pueden crear por lotes (101 a 115) o importar desde Excel.
+- **Sedes y habitaciones**: número, bloque, piso, camas y tipo (matrimonial, hombres, mujeres, familiar, presbíteros, mixta). También se marca si tiene baño privado y si está fuera de servicio. Se pueden crear por lotes (101 a 115) o importar desde Excel.
 - **Eventos**: cada evento tiene su enlace de inscripción y su sede.
 - **Inscritos**: búsqueda y filtros, estados (inscrito, confirmado, llegó, cancelado) y fotos del documento. Se edita cada inscripción, se vinculan cónyuges a mano y se exporta a Excel.
 - **Acomodación**: tablero donde se arrastra a cada persona a una habitación. En el celular se tocan varias personas y luego se pulsa "Asignar aquí".
   - Los matrimonios se mueven juntos.
-  - Reglas: nunca se supera la capacidad. Pide confirmación al mezclar géneros, al poner a alguien sin su cónyuge en una matrimonial o al dejar a una persona con movilidad reducida en una habitación no accesible.
-  - **Asignación automática**: acomoda primero a los matrimonios (y reúne a los que quedaron separados), luego a presbíteros y seminaristas y por último a cada persona según su género. Da prioridad a las habitaciones accesibles para quien las necesita y mantiene juntas a las comunidades.
-  - El listado por habitación se exporta a Excel y se puede imprimir.
+  - Reglas: nunca se supera la capacidad. Pide confirmación al mezclar géneros o al poner a alguien sin su cónyuge en una matrimonial.
+  - **Asignación automática**: acomoda primero a los matrimonios (y reúne a los que quedaron separados), luego a presbíteros y seminaristas y por último a cada persona según su género. Mantiene juntas a las comunidades.
+  - El listado por habitación se exporta a Excel. Se imprime de dos formas: listado general por bloque y piso (con las camas libres en blanco) o un cartel por habitación para pegar en la puerta.
 - **Usuarios**: administradores y coordinadores. Las acciones quedan en un registro de auditoría.
 
 ## Uso local

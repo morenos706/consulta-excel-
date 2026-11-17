@@ -92,7 +92,6 @@ function Resumen({ ev }) {
           <h3>Atención especial</h3>
           <table><tbody>
             <tr><td>Menores de edad (con acudiente)</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{r.menores}</td></tr>
-            <tr><td>Movilidad reducida</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{r.movilidadReducida}</td></tr>
             <tr><td>Matrimonios con cónyuge sin vincular</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{r.matrimoniosPendientes}</td></tr>
           </tbody></table>
           {!ev.sede_id && <div className="aviso aviso-alerta" style={{ marginTop: '1rem' }}>El evento no tiene sede. Edítelo y elija una para poder acomodar en habitaciones.</div>}
@@ -153,7 +152,7 @@ function Inscritos({ ev, onCambio }) {
                 <td>{i.edad}{i.edad < 18 && <> <span className="insignia alerta">Menor</span></>}</td>
                 <td>{i.comunidad}</td>
                 <td>{i.conyuge_nombre ? `${i.conyuge_nombre} ${i.conyuge_apellido}` : i.tipo_persona === 'MATRIMONIO' && <span className="insignia alerta">Sin vincular</span>}</td>
-                <td>{i.habitacion_codigo ? <strong>{i.habitacion_codigo}</strong> : <span className="suave">—</span>}{i.movilidad_reducida && <> <span title="Movilidad reducida">♿</span></>}</td>
+                <td>{i.habitacion_codigo ? <strong>{i.habitacion_codigo}</strong> : <span className="suave">—</span>}</td>
                 <td><span className={`insignia ${ESTADOS[i.estado].c}`}>{ESTADOS[i.estado].t}</span></td>
               </tr>
             ))}
@@ -176,7 +175,7 @@ function DetalleInscripcion({ id, lista, onCerrar, onGuardado }) {
   const cargar = useCallback(() => get(`/inscripciones/${id}`).then((x) => {
     setD(x);
     setConyuge(x.conyuge_inscripcion_id ? String(x.conyuge_inscripcion_id) : '');
-    setF({ estado: x.estado, tipo_persona: x.tipo_persona, comunidad: x.comunidad || '', parroquia: x.parroquia || '', movilidad_reducida: x.movilidad_reducida, necesidades: x.necesidades || '', observaciones: x.observaciones || '', nombre: x.nombre, apellido: x.apellido, celular: x.celular, email: x.email, sexo: x.sexo });
+    setF({ estado: x.estado, tipo_persona: x.tipo_persona, comunidad: x.comunidad || '', parroquia: x.parroquia || '', necesidades: x.necesidades || '', observaciones: x.observaciones || '', nombre: x.nombre, apellido: x.apellido, celular: x.celular, email: x.email, sexo: x.sexo });
   }), [id]);
   useEffect(() => { cargar(); }, [cargar]);
   if (!d || !f) return <Modal titulo="Inscripción" onCerrar={onCerrar}><Cargando /></Modal>;
@@ -232,7 +231,6 @@ function DetalleInscripcion({ id, lista, onCerrar, onGuardado }) {
             </select>
           </Campo>
         )}
-        <label className="check"><input type="checkbox" checked={f.movilidad_reducida} onChange={c('movilidad_reducida')} /><span>Movilidad reducida (requiere habitación accesible)</span></label>
         <div className="rejilla-2">
           <Campo etiqueta="Salud / necesidades especiales"><textarea value={f.necesidades} onChange={c('necesidades')} /></Campo>
           <Campo etiqueta="Observaciones internas"><textarea value={f.observaciones} onChange={c('observaciones')} /></Campo>

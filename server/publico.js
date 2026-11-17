@@ -78,7 +78,7 @@ export function validarInscripcion(b, ev) {
     direccion: mayus(b.direccion, 200),
     comunidad: opcional(mayus(b.comunidad, 120)),
     parroquia: opcional(mayus(b.parroquia, 120)),
-    movilidad_reducida: bool(b.movilidad_reducida),
+    movilidad_reducida: false,
     necesidades: opcional(b.necesidades, 500),
     acepta_politica: bool(b.acepta_politica),
     acepta_cultura: bool(b.acepta_cultura),

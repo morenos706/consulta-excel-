@@ -23,7 +23,7 @@ function FormSede({ sede, onCerrar, onGuardado }) {
   );
 }
 
-const HAB_VACIA = { codigo: '', bloque: '', piso: 1, capacidad: 2, tipo: 'MIXTA', accesible: false, bano_privado: false, activa: true, notas: '' };
+const HAB_VACIA = { codigo: '', bloque: '', piso: 1, capacidad: 2, tipo: 'MIXTA', bano_privado: false, activa: true, notas: '' };
 
 function CamposHabitacion({ f, setF, lote }) {
   const c = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
@@ -45,7 +45,6 @@ function CamposHabitacion({ f, setF, lote }) {
         </Campo>
       </div>
       <div className="fila" style={{ gap: '1.5rem' }}>
-        <label className="check"><input type="checkbox" checked={f.accesible} onChange={c('accesible')} /><span>♿ Accesible (movilidad reducida)</span></label>
         <label className="check"><input type="checkbox" checked={f.bano_privado} onChange={c('bano_privado')} /><span>🚿 Baño privado</span></label>
         {!lote && <label className="check"><input type="checkbox" checked={f.activa} onChange={c('activa')} /><span>En servicio</span></label>}
       </div>
@@ -107,8 +106,8 @@ function Importar({ sedeId, onCerrar, onGuardado }) {
       <div className="pila">
         <p>La primera hoja del archivo debe tener una fila de encabezados con estas columnas (el orden no importa):</p>
         <div className="tabla-envoltura"><table>
-          <thead><tr><th>Habitación</th><th>Bloque</th><th>Piso</th><th>Camas</th><th>Tipo</th><th>Accesible</th><th>Baño privado</th><th>Notas</th></tr></thead>
-          <tbody><tr><td>201</td><td>A</td><td>2</td><td>4</td><td>Mujeres</td><td>No</td><td>Sí</td><td></td></tr></tbody>
+          <thead><tr><th>Habitación</th><th>Bloque</th><th>Piso</th><th>Camas</th><th>Tipo</th><th>Baño privado</th><th>Notas</th></tr></thead>
+          <tbody><tr><td>201</td><td>A</td><td>2</td><td>4</td><td>Mujeres</td><td>Sí</td><td></td></tr></tbody>
         </table></div>
         <p className="ayuda">Obligatorias: <strong>Habitación</strong> y <strong>Camas</strong>. Tipos: Matrimonial, Hombres, Mujeres, Familiar, Presbíteros, Mixta. Si la habitación ya existe se actualiza.</p>
         <input type="file" accept=".xlsx" onChange={(e) => setArchivo(e.target.files?.[0] || null)} />
@@ -184,7 +183,7 @@ export default function Sedes() {
                           <tr key={h.id}>
                             <td><strong>{h.codigo}</strong>{h.notas && <div className="pequeno suave">{h.notas}</div>}</td>
                             <td>{h.bloque}</td><td>{h.piso}</td><td>{h.capacidad}</td><td>{TIPO_HAB[h.tipo]}</td>
-                            <td>{h.accesible && '♿ Accesible '}{h.bano_privado && '🚿 Baño privado'}</td>
+                            <td>{h.bano_privado && '🚿 Baño privado'}</td>
                             <td>{h.activa ? <span className="insignia ok">En servicio</span> : <span className="insignia">Fuera de servicio</span>}</td>
                             <td style={{ whiteSpace: 'nowrap' }}>
                               <button type="button" className="btn btn-chico" onClick={() => setModal({ t: 'hab', hab: h })}>Editar</button>{' '}

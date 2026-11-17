@@ -20,7 +20,7 @@ export function CabeceraPublica() {
 
 const INICIAL = {
   documento_tipo: 'CC', identificacion: '', nombre: '', apellido: '', tipo_persona: '', fecha_nacimiento: '', sexo: '',
-  celular: '', email: '', direccion: '', comunidad: '', parroquia: '', movilidad_reducida: false, necesidades: '',
+  celular: '', email: '', direccion: '', comunidad: '', parroquia: '', necesidades: '',
   acudiente_tipo: 'CC', acudiente_identificacion: '', acudiente_nombre: '', acudiente_apellido: '', acudiente_email: '', acudiente_celular: '',
   conyuge_identificacion: '', conyuge_pendiente: false, acepta_politica: false, acepta_cultura: false,
 };
@@ -227,12 +227,8 @@ export default function Registro() {
               </section>
 
               <section className="seccion-form">
-                <h3>Hospedaje y salud</h3>
-                <label className="check">
-                  <input type="checkbox" checked={f.movilidad_reducida} onChange={cambiar('movilidad_reducida')} />
-                  <span><strong>Tengo movilidad reducida</strong><br /><span className="ayuda">Necesito una habitación accesible (primer piso, sin escaleras).</span></span>
-                </label>
-                <Campo etiqueta="Condiciones de salud, alergias o necesidades especiales" className="" ayuda="Opcional. Ayuda al equipo a acomodarle mejor.">
+                <h3>Salud</h3>
+                <Campo etiqueta="Condiciones de salud, alergias o necesidades especiales" className="" ayuda="Opcional. Ayuda al equipo a atenderle mejor.">
                   <textarea name="necesidades" value={f.necesidades} onChange={cambiar('necesidades')} maxLength={500} />
                 </Campo>
               </section>

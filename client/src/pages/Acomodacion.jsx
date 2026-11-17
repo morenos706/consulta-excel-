@@ -20,7 +20,6 @@ function Chip({ p, seleccionado, onClic, onQuitar, onArrastrar }) {
         {p.tipo_persona === 'MATRIMONIO' && <span className={`marca-m ${p.conyuge_inscripcion_id ? 'pareja' : ''}`} title={p.conyuge_nombre ? `Cónyuge: ${p.conyuge_nombre} ${p.conyuge_apellido}` : 'Cónyuge sin vincular'}>Mat</span>}
         {['PRESBITERO', 'SEMINARISTA'].includes(p.tipo_persona) && <span className="marca-m" title={TIPO_PERSONA[p.tipo_persona]}>{p.tipo_persona === 'PRESBITERO' ? 'Pbro' : 'Sem'}</span>}
         {p.edad < 18 && <span className="marca-m menor" title="Menor de edad">{p.edad}</span>}
-        {p.movilidad_reducida && <span className="marca-m mov" title="Movilidad reducida">♿</span>}
       </span>
       {onQuitar && <button type="button" className="btn btn-icono btn-chico" onClick={(e) => { e.stopPropagation(); onQuitar(p); }} title="Retirar de la habitación" aria-label="Retirar">✕</button>}
     </div>
@@ -37,7 +36,12 @@ export default function Acomodacion({ ev, onCambio }) {
   const [sobre, setSobre] = useState(null);
   const [ocupado, setOcupado] = useState(false);
   const [resultado, setResultado] = useState(null);
+  const [modoImpresion, setModoImpresion] = useState('listado');
   const toast = useToast();
+  const imprimir = (modo) => {
+    setModoImpresion(modo);
+    setTimeout(() => window.print(), 50);
+  };
 
   const cargar = useCallback(() => get(`/eventos/${ev.id}/acomodacion`).then(setA), [ev.id]);
   useEffect(() => { cargar(); }, [cargar]);
@@ -95,7 +99,7 @@ export default function Acomodacion({ ev, onCambio }) {
   const alternar = (p) => setSel((s) => { const n = new Set(s); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n; });
 
   const automatica = async () => {
-    if (!confirm('La asignación automática acomodará a todas las personas que aún no tienen habitación, respetando matrimonios, género, presbíteros, movilidad reducida y comunidades. Las asignaciones actuales no se modifican, salvo para reunir a un matrimonio que haya quedado separado. ¿Continuar?')) return;
+    if (!confirm('La asignación automática acomodará a todas las personas que aún no tienen habitación, respetando matrimonios, género, presbíteros y comunidades. Las asignaciones actuales no se modifican, salvo para reunir a un matrimonio que haya quedado separado. ¿Continuar?')) return;
     setOcupado(true);
     try {
       const r = await post(`/eventos/${ev.id}/acomodacion/automatica`);
@@ -138,7 +142,8 @@ export default function Acomodacion({ ev, onCambio }) {
         <span className="espacio" />
         <button type="button" className="btn btn-oro" onClick={automatica} disabled={ocupado || !r.sinAsignar}>✨ Asignación automática</button>
         <button type="button" className="btn" onClick={() => descargar(`/eventos/${ev.id}/exportar/acomodacion`)}>⬇ Excel</button>
-        <button type="button" className="btn" onClick={() => window.print()}>🖨 Imprimir</button>
+        <button type="button" className="btn" onClick={() => imprimir('listado')}>🖨 Imprimir listado</button>
+        <button type="button" className="btn" onClick={() => imprimir('carteles')}>🖨 Carteles por habitación</button>
         <button type="button" className="btn btn-peligro" onClick={() => vaciar(null)} disabled={!r.acomodados}>Vaciar todo</button>
       </div>
 
@@ -181,7 +186,6 @@ export default function Acomodacion({ ev, onCambio }) {
                         <span className="hab-codigo">{h.codigo}</span>
                         <span className="pequeno suave">{TIPO_HAB[h.tipo]}</span>
                         <span className="espacio" />
-                        {h.accesible && <span title="Accesible">♿</span>}
                         {h.bano_privado && <span title="Baño privado">🚿</span>}
                         <strong className="pequeno">{h.ocupantes.length}/{h.capacidad}</strong>
                       </div>
@@ -205,7 +209,7 @@ export default function Acomodacion({ ev, onCambio }) {
         </div>
       </div>
 
-      <Impresion ev={ev} a={a} />
+      <Impresion ev={ev} a={a} modo={modoImpresion} />
 
       {resultado && (
         <Modal titulo="Resultado de la asignación automática" onCerrar={() => setResultado(null)} pie={<button type="button" className="btn btn-primario" onClick={() => setResultado(null)}>Entendido</button>}>
@@ -230,21 +234,86 @@ function Grupo({ titulo, children }) {
   return (<><div className="grupo-piso">{titulo}</div>{children}</>);
 }
 
-/** Listado para imprimir y pegar en la casa de convivencias. */
-function Impresion({ ev, a }) {
-  return (
-    <div className="solo-impresion">
-      <h2>Acomodación · {ev.nombre}</h2>
-      <p>{ev.sede_nombre} · {fechaRango(ev.fecha_inicio, ev.fecha_fin)} · {a.resumen.acomodados} personas acomodadas</p>
-      <div className="impresion-rejilla">
-        {a.habitaciones.filter((h) => h.ocupantes.length).map((h) => (
-          <div key={h.id} className="impresion-hab">
-            <h4>Habitación {h.codigo} <small>({TIPO_HAB[h.tipo]}{h.bloque ? ` · Bloque ${h.bloque}` : ''} · Piso {h.piso})</small></h4>
-            <ol style={{ margin: 0, paddingLeft: '1.2rem' }}>{h.ocupantes.map((p) => <li key={p.id}>{p.apellido} {p.nombre}{p.comunidad ? ` — ${p.comunidad}` : ''}</li>)}</ol>
-          </div>
+const nombreCompleto = (p) => `${p.apellido} ${p.nombre}`;
+const generado = () => new Date().toLocaleString('es-CO', { dateStyle: 'long', timeStyle: 'short', timeZone: 'America/Bogota' });
+
+function agrupar(habs) {
+  const grupos = [];
+  for (const h of habs) {
+    const k = `${h.bloque ? `Bloque ${h.bloque} · ` : ''}Piso ${h.piso}`;
+    if (!grupos.length || grupos[grupos.length - 1].k !== k) grupos.push({ k, habs: [] });
+    grupos[grupos.length - 1].habs.push(h);
+  }
+  return grupos;
+}
+
+/** Versión impresa: listado general por bloque y piso, o un cartel por habitación para la puerta. */
+function Impresion({ ev, a, modo }) {
+  const habs = a.habitaciones.filter((h) => h.activa);
+  if (modo === 'carteles') {
+    return (
+      <div className="solo-impresion">
+        {habs.filter((h) => h.ocupantes.length).map((h) => (
+          <section key={h.id} className="cartel">
+            <div className="cartel-org">Fundación Familia de Nazaret · {ev.nombre}</div>
+            <div className="cartel-hab">Habitación {h.codigo}</div>
+            <div className="cartel-info">{TIPO_HAB[h.tipo]}{h.bloque ? ` · Bloque ${h.bloque}` : ''} · Piso {h.piso}</div>
+            <ol className="cartel-lista">{h.ocupantes.map((p) => <li key={p.id}>{nombreCompleto(p)}</li>)}</ol>
+            <div className="cartel-pie">{fechaRango(ev.fecha_inicio, ev.fecha_fin)}</div>
+          </section>
         ))}
       </div>
-      {a.sinAsignar.length > 0 && <><h3>Sin habitación</h3><p>{a.sinAsignar.map((p) => `${p.apellido} ${p.nombre}`).join(' · ')}</p></>}
+    );
+  }
+  return (
+    <div className="solo-impresion impresion-listado">
+      <header className="imp-cab">
+        <div>
+          <div className="imp-org">Fundación Familia de Nazaret</div>
+          <h1>Acomodación en habitaciones</h1>
+          <div className="imp-evento">{ev.nombre}</div>
+        </div>
+        <table className="imp-datos"><tbody>
+          <tr><th>Sede</th><td>{ev.sede_nombre}</td></tr>
+          <tr><th>Fechas</th><td>{fechaRango(ev.fecha_inicio, ev.fecha_fin)}</td></tr>
+          <tr><th>Acomodados</th><td>{a.resumen.acomodados} de {a.resumen.inscritos}</td></tr>
+          <tr><th>Impreso</th><td>{generado()}</td></tr>
+        </tbody></table>
+      </header>
+      {agrupar(habs).map((g) => (
+        <section key={g.k} className="imp-grupo">
+          <h2>{g.k}</h2>
+          <div className="imp-habs">
+            {g.habs.map((h) => (
+              <table key={h.id} className="imp-hab">
+                <thead>
+                  <tr><th colSpan={3}>Habitación {h.codigo} <span>· {TIPO_HAB[h.tipo]} · {h.ocupantes.length}/{h.capacidad} camas{h.bano_privado ? ' · baño privado' : ''}</span></th></tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: h.capacidad }, (_, i) => {
+                    const p = h.ocupantes[i];
+                    return (
+                      <tr key={i} className={p ? '' : 'libre'}>
+                        <td className="n">{i + 1}</td>
+                        <td>{p ? nombreCompleto(p) : 'Libre'}{p?.edad < 18 ? ' (menor)' : ''}</td>
+                        <td className="com">{p?.comunidad || ''}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ))}
+          </div>
+        </section>
+      ))}
+      {a.sinAsignar.length > 0 && (
+        <section className="imp-grupo">
+          <h2>Personas sin habitación ({a.sinAsignar.length})</h2>
+          <table className="imp-hab"><tbody>
+            {a.sinAsignar.map((p, i) => <tr key={p.id}><td className="n">{i + 1}</td><td>{nombreCompleto(p)}</td><td className="com">{TIPO_PERSONA[p.tipo_persona]}{p.comunidad ? ` · ${p.comunidad}` : ''}</td></tr>)}
+          </tbody></table>
+        </section>
+      )}
     </div>
   );
 }
