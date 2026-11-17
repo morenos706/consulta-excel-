@@ -177,3 +177,15 @@ test('importar habitaciones desde Excel', async () => {
   assert.equal(r.status, 200);
   assert.deepEqual(r.body, { creadas: 1, actualizadas: 1 });
 });
+
+test('matrimonio separado por inscripción tardía se reúne en la asignación automática', async () => {
+  const { asignarAutomatico } = await import('../server/reglas.js');
+  const habs = [
+    { id: 1, codigo: '201', tipo: 'MUJERES', capacidad: 4, activa: true, accesible: false, ocupantes: [{ id: 10, nombre: 'SANDRA', sexo: 'F', tipo_persona: 'MATRIMONIO', conyuge_inscripcion_id: 11 }] },
+    { id: 2, codigo: '204', tipo: 'HOMBRES', capacidad: 4, activa: true, accesible: false, ocupantes: [] },
+    { id: 3, codigo: '108', tipo: 'MATRIMONIAL', capacidad: 2, activa: true, accesible: false, ocupantes: [] },
+  ];
+  const r = asignarAutomatico(habs, [{ id: 11, nombre: 'RICARDO', sexo: 'M', tipo_persona: 'MATRIMONIO', conyuge_inscripcion_id: 10 }]);
+  assert.deepEqual(r.asignaciones.map((a) => [a.inscripcion_id, a.habitacion_id]).sort(), [[10, 3], [11, 3]]);
+  assert.equal(r.sinLugar.length, 0);
+});

@@ -78,7 +78,9 @@ function preferencias(p) {
  * Asignación automática.
  * habitaciones: [{ id, codigo, tipo, capacidad, accesible, activa, ocupantes: [inscripción, ...] }]
  * pendientes: inscripciones sin habitación (no canceladas).
- * Devuelve { asignaciones: [{ inscripcion_id, habitacion_id }], sinLugar: [{ inscripcion_id, nombre, motivo }] }
+ * Si un matrimonio quedó separado porque uno de los cónyuges se inscribió tarde, se reúnen en otra habitación
+ * (la asignación del cónyuge ya acomodado se marca con reubicado: true).
+ * Devuelve { asignaciones: [{ inscripcion_id, habitacion_id, reubicado? }], sinLugar: [{ inscripcion_id, nombre, motivo }] }
  */
 export function asignarAutomatico(habitaciones, pendientes) {
   const habs = habitaciones
@@ -122,6 +124,18 @@ export function asignarAutomatico(habitaciones, pendientes) {
   }
 
   const necesitaAcceso = (grupo) => grupo.some((g) => g.movilidad_reducida);
+  const puntajePareja = (par) => {
+    const acceso = necesitaAcceso(par);
+    return (x) => {
+      let s = 0;
+      if (x.tipo !== 'MATRIMONIAL') s += 100;
+      if (x.ocupantes.length) s += 50;            // preferir habitación propia para el matrimonio
+      s += (libre(x) - 2) * 5;                     // ajuste exacto
+      if (acceso && !x.accesible) s += 200;
+      if (!acceso && x.accesible) s += 3;
+      return s;
+    };
+  };
 
   // 1. Matrimonios con ambos cónyuges pendientes o con el cónyuge ya acomodado.
   const parejas = [];
@@ -133,24 +147,27 @@ export function asignarAutomatico(habitaciones, pendientes) {
       if (p.id < c) parejas.push([p, porId.get(c)]);
     } else if (c && habDe.has(c)) {
       const h = habDe.get(c);
-      if (valido(h, [p], true)) colocar(h, [p]);
-      else solos.push(p);
+      if (valido(h, [p], true)) { colocar(h, [p]); continue; }
+      // El cónyuge quedó en una habitación donde no cabe la pareja: se reúnen en otra habitación libre.
+      const conyuge = h.ocupantes.find((o) => o.id === c);
+      const par = [conyuge, p];
+      const destino = elegir(habs.filter((x) => x !== h), par, puntajePareja(par));
+      if (destino) {
+        h.ocupantes = h.ocupantes.filter((o) => o.id !== c);
+        destino.ocupantes.push(conyuge);
+        habDe.set(c, destino);
+        asignaciones.push({ inscripcion_id: c, habitacion_id: destino.id, reubicado: true });
+        colocar(destino, [p]);
+      } else {
+        solos.push(p);
+      }
     } else {
       solos.push(p);
     }
   }
   parejas.sort((a, b) => Number(necesitaAcceso(b)) - Number(necesitaAcceso(a)));
   for (const par of parejas) {
-    const acceso = necesitaAcceso(par);
-    const h = elegir(habs, par, (x) => {
-      let s = 0;
-      if (x.tipo !== 'MATRIMONIAL') s += 100;
-      if (x.ocupantes.length) s += 50;            // preferir habitación propia para el matrimonio
-      s += (libre(x) - 2) * 5;                     // ajuste exacto
-      if (acceso && !x.accesible) s += 200;
-      if (!acceso && x.accesible) s += 3;
-      return s;
-    });
+    const h = elegir(habs, par, puntajePareja(par));
     if (h) colocar(h, par);
     else for (const p of par) sinLugar.push({ inscripcion_id: p.id, nombre: p.nombre, motivo: 'No hay habitación matrimonial o familiar con 2 camas libres' });
   }

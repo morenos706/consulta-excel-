@@ -435,7 +435,7 @@ rutasAdmin.post('/eventos/:id/acomodacion/automatica', ruta(async (req, res) => 
     if (!est.evento.sede_id) fallo(400, 'Asigne una sede al evento antes de acomodar');
     const { asignaciones, sinLugar } = asignarAutomatico(est.habitaciones, est.sinAsignar);
     for (const a of asignaciones) await t.query('update inscripciones set habitacion_id = $1 where id = $2', [a.habitacion_id, a.inscripcion_id]);
-    return { asignadas: asignaciones.length, sinLugar };
+    return { asignadas: asignaciones.filter((a) => !a.reubicado).length, reubicadas: asignaciones.filter((a) => a.reubicado).length, sinLugar };
   });
   await auditar(req, 'acomodacion_automatica', `Evento ${eventoId}: ${r.asignadas} asignadas, ${r.sinLugar.length} sin lugar`);
   res.json(r);
