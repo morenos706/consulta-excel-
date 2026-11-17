@@ -28,9 +28,9 @@ html, body { margin: 0; }
 body {
   background: var(--fondo);
   color: var(--texto);
-  font: 15px/1.5 'Source Sans 3', system-ui, sans-serif;
+  font: 15px/1.5 Arial, Helvetica, sans-serif;
 }
-h1, h2, h3 { font-family: 'Lora', Georgia, serif; color: var(--azul); line-height: 1.25; margin: 0 0 .5em; }
+h1, h2, h3 { font-family: Arial, Helvetica, sans-serif; color: var(--azul); line-height: 1.25; margin: 0 0 .5em; }
 h1 { font-size: 1.7rem; }
 h2 { font-size: 1.3rem; }
 h3 { font-size: 1.05rem; }
@@ -103,7 +103,7 @@ textarea { min-height: 70px; resize: vertical; }
 .publico-cabecera { background: var(--azul); color: #fff; padding: 1.1rem 1rem; border-bottom: 4px solid var(--oro); }
 .publico-cabecera .marca { max-width: 860px; margin: 0 auto; display: flex; align-items: center; gap: .8rem; }
 .logo { width: 42px; height: 42px; border-radius: 10px; background: #ffffff1a; display: grid; place-items: center; flex: none; }
-.marca-nombre { font-family: 'Lora', serif; font-size: 1.2rem; font-weight: 600; line-height: 1.1; }
+.marca-nombre { font-family: Arial, Helvetica, sans-serif; font-size: 1.2rem; font-weight: 600; line-height: 1.1; }
 .marca-sub { font-size: .8rem; opacity: .8; letter-spacing: .04em; text-transform: uppercase; }
 .publico-contenido { max-width: 860px; margin: 1.5rem auto 3rem; padding: 0 16px; }
 .seccion-form { border-top: 1px solid var(--borde); padding-top: 1.25rem; margin-top: 1.5rem; }

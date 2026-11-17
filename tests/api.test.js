@@ -189,3 +189,14 @@ test('matrimonio separado por inscripción tardía se reúne en la asignación a
   assert.deepEqual(r.asignaciones.map((a) => [a.inscripcion_id, a.habitacion_id]).sort(), [[10, 3], [11, 3]]);
   assert.equal(r.sinLugar.length, 0);
 });
+
+test('los Excel exportados usan letra Arial', async () => {
+  const ExcelJS = (await import('exceljs')).default;
+  const x = await api('GET', `/eventos/${evento.id}/exportar/inscritos`);
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(Buffer.from(x.body));
+  const ws = wb.worksheets[0];
+  assert.equal(ws.getCell(1, 1).font.name, 'Arial');
+  assert.equal(ws.getCell(1, 1).font.bold, true);
+  assert.equal(ws.getCell(5, 2).font.name, 'Arial');
+});

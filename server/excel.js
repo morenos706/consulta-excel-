@@ -3,6 +3,17 @@ import ExcelJS from 'exceljs';
 import { TIPOS_HABITACION } from './reglas.js';
 
 const AZUL = 'FF1F3A5F';
+
+/** Aplica la letra Arial a todas las celdas del libro, conservando negrita, color, etc. */
+function arial(wb) {
+  for (const ws of wb.worksheets) {
+    ws.eachRow({ includeEmpty: true }, (row) => {
+      row.eachCell({ includeEmpty: true }, (cell) => { cell.font = { ...(cell.font || {}), name: 'Arial', size: cell.font?.size || 10 }; });
+    });
+  }
+  return wb.xlsx.writeBuffer();
+}
+
 const ESTADOS = { INSCRITO: 'Inscrito', CONFIRMADO: 'Confirmado', LLEGO: 'Llegó', CANCELADO: 'Cancelado' };
 
 function encabezado(ws, titulo, subtitulo, columnas) {
@@ -69,7 +80,7 @@ export async function excelInscritos(ev, inscritos) {
       estado: ESTADOS[i.estado], creado: new Date(i.creado).toLocaleString('es-CO', { timeZone: 'America/Bogota' }), observaciones: i.observaciones,
     });
   });
-  return wb.xlsx.writeBuffer();
+  return arial(wb);
 }
 
 export async function excelAcomodacion({ evento, habitaciones, sinAsignar }) {
@@ -123,7 +134,7 @@ export async function excelAcomodacion({ evento, habitaciones, sinAsignar }) {
   for (const o of sinAsignar) {
     ws2.addRow({ persona: `${o.apellido} ${o.nombre}`, identificacion: o.identificacion, tipo_persona: o.tipo_persona, sexo: sexo(o.sexo), edad: o.edad, comunidad: o.comunidad, celular: o.celular });
   }
-  return wb.xlsx.writeBuffer();
+  return arial(wb);
 }
 
 /** Lee habitaciones de la primera hoja. Reconoce encabezados por nombre, sin importar mayúsculas ni tildes. */
